@@ -10,16 +10,16 @@ project(ejdi LANGUAGES C CXX VERSION 0.0.1)
 
 include(cppm_tool)
 cppm_load()
-cppm_cxx_standard(17)
+cppm_cxx_standard(2a)
 cppm_compiler_option(
 	DEBUG
-		CLANG "-std=c++17 -Wall "
-		GCC   "-std=c++17 -Wall "
-		MSVC  "/std:c++17 /MP"
+		CLANG "-Wall "
+		GCC   "-Wall "
+		MSVC  "/MP"
 	RELEASE
-		CLANG "-std=c++17 -Wall "
-		GCC   "-std=c++17 -Wall "
-		MSVC  "/std:c++17 /MP"
+		CLANG "-Wall "
+		GCC   "-Wall "
+		MSVC  "/MP"
 )
 
 
@@ -27,6 +27,8 @@ cppm_compiler_option(
 cppm_target_define(ejdi BINARY 
 SOURCES 
 	src/main.cpp
+	src/lexer.cpp
+	src/span.cpp
 )
 
 
