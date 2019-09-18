@@ -1,0 +1,13 @@
+[package]
+   name = "ejdi"
+   version = "0.0.1"
+   description = ""
+
+[compiler]
+   clang = {option = "-std=c++17 -Wall "}
+   gcc   = {option = "-std=c++17 -Wall "}
+   msvc  = {option = "/std:c++17 /MP"}
+
+[[bin]]
+   name = "ejdi"
+   source = ["src/.*"]
