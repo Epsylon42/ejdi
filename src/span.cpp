@@ -26,6 +26,10 @@ string_view Span::get_substring(string_view source) const {
     return source.substr(start, end - start);
 }
 
+std::size_t Span::length() const {
+    return end - start;
+}
+
 Span Span::empty() {
     auto ret = Span("", 0, 0);
     ret.is_empty = true;

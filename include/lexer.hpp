@@ -23,6 +23,8 @@ namespace ejdi::lexer {
             , str(std::string(str)) {}
 
         bool operator==(const std::string_view& str) const;
+
+        virtual ~Lexem() = default;
     };
 
 
@@ -47,6 +49,25 @@ namespace ejdi::lexer {
     };
 
 
+    struct StringLit : Lexem {
+        std::string val_str;
+
+        StringLit(span::Span span, std::string_view str, std::string value)
+            : Lexem(span, std::string(str))
+            , val_str(std::move(value)) {}
+
+        std::string value() const;
+    };
+
+
+    struct NumberLit : Lexem {
+        NumberLit(span::Span span, std::string_view str)
+            : Lexem(span, std::string(str)) {}
+
+        float value() const;
+    };
+
+
     namespace actions {
         constexpr std::array<std::string_view, 24> punctuation {
             ",", ".", ";",
@@ -57,6 +78,10 @@ namespace ejdi::lexer {
 
         constexpr std::array<std::tuple<std::string_view, std::string_view>, 3> parens {
             std::tuple{ "(", ")" }, std::tuple{ "[", "]" }, std::tuple{ "{", "}" }
+        };
+
+        constexpr std::array<std::tuple<std::string_view, std::string_view>, 1> string_escapes {
+            std::tuple{ "n", "\n" },
         };
 
 

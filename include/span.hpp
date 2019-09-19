@@ -27,6 +27,7 @@ namespace ejdi::span {
 
         Span join(Span other) const;
         std::string_view get_substring(std::string_view source) const;
+        std::size_t length() const;
 
 
         bool operator==(const Span& other) const noexcept;
