@@ -17,6 +17,15 @@ bool Lexem::operator==(const string_view& str) const {
     return this->str == str;
 }
 
+string Lexem::debug(size_t depth) const {
+    string ret;
+    for (size_t i = 0; i < depth; i++) {
+        ret += "  ";
+    }
+    ret += str;
+    return ret;
+}
+
 
 Paren Paren::flipped() const {
     return Paren(Span::empty(), op, cl, !opening);

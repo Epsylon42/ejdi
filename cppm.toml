@@ -5,8 +5,8 @@
    standard = "2a"
 
 [compiler]
-   clang = {option = "-Wall "}
-   gcc   = {option = "-Wall "}
+   clang = {option = "-Wall -Werror"}
+   gcc   = {option = "-Wall -Werror"}
    msvc  = {option = "/MP"}
 
 [[bin]]

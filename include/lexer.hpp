@@ -6,6 +6,7 @@
 #include <vector>
 #include <tuple>
 #include <memory>
+#include <optional>
 
 #include <span.hpp>
 
@@ -22,7 +23,28 @@ namespace ejdi::lexer {
             : span(span)
             , str(std::string(str)) {}
 
+        virtual std::string debug(std::size_t depth = 0) const;
+
         bool operator==(const std::string_view& str) const;
+
+
+        template< typename T >
+        std::optional<T*> downcast_ref() {
+            if (typeid(*this) == typeid(T)) {
+                return dynamic_cast<T*>(this);
+            } else {
+                return std::nullopt;
+            }
+        }
+
+        template< typename T >
+        static std::optional<std::unique_ptr<T>> downcast_unique(std::unique_ptr<Lexem> ptr) {
+            if (typeid(*ptr) == typeid(T)) {
+                return std::unique_ptr<T>(dynamic_cast<T*>(ptr.release()));
+            } else {
+                return std::nullopt;
+            }
+        }
 
         virtual ~Lexem() = default;
     };

@@ -13,12 +13,12 @@ cppm_load()
 cppm_cxx_standard(2a)
 cppm_compiler_option(
 	DEBUG
-		CLANG "-Wall "
-		GCC   "-Wall "
+		CLANG "-Wall -Werror"
+		GCC   "-Wall -Werror"
 		MSVC  "/MP"
 	RELEASE
-		CLANG "-Wall "
-		GCC   "-Wall "
+		CLANG "-Wall -Werror"
+		GCC   "-Wall -Werror"
 		MSVC  "/MP"
 )
 
@@ -26,6 +26,7 @@ cppm_compiler_option(
 
 cppm_target_define(ejdi BINARY 
 SOURCES 
+	src/lexem_groups.cpp
 	src/main.cpp
 	src/lexer.cpp
 	src/span.cpp
