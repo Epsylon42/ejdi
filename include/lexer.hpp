@@ -12,6 +12,8 @@
 
 namespace ejdi::lexer {
     struct Lexem {
+        static constexpr std::string_view NAME = "lexem";
+
         span::Span span;
         std::string str;
 
@@ -50,13 +52,25 @@ namespace ejdi::lexer {
     };
 
 
+    struct Punct : Lexem {
+        static constexpr std::string_view NAME = "punctuation";
+
+        template< typename T >
+        Punct(span::Span span, T str) : Lexem(span, str) {}
+    };
+
+
     struct Word : Lexem {
+        static constexpr std::string_view NAME = "word";
+
         Word(span::Span span, std::string str) : Lexem(span, str) {}
         Word(span::Span span, std::string_view str) : Lexem(span, str) {}
     };
 
 
     struct Paren : Lexem {
+        static constexpr std::string_view NAME = "paren";
+
         std::string_view op;
         std::string_view cl;
         bool opening;

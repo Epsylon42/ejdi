@@ -29,7 +29,9 @@ SOURCES
 	src/lexem_groups.cpp
 	src/main.cpp
 	src/lexer.cpp
+	src/parser.cpp
 	src/span.cpp
+	src/ast.cpp
 )
 
 

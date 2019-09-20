@@ -90,7 +90,7 @@ vector<unique_ptr<Lexem>> actions::split_string(string_view str, string_view fil
 optional<LPtr> get_punct(string_view str, SpanConstructor span) {
     for (auto punct : punctuation) {
         if (str.starts_with(punct)) {
-            return make_unique<Lexem>(span(punct.length()), punct);
+            return make_unique<Punct>(span(punct.length()), punct);
         }
     }
 

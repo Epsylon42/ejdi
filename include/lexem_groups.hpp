@@ -19,10 +19,10 @@ namespace ejdi::lexer::groups {
 
     struct Group : Lexem {
         std::optional<std::unique_ptr<ParenPair>> surrounding;
-        std::vector<std::unique_ptr<Lexem>> inner;
+        std::vector<std::shared_ptr<Lexem>> inner;
 
-        Group(std::vector<std::unique_ptr<Lexem>> inner);
-        Group(std::vector<std::unique_ptr<Lexem>> inner,
+        Group(std::vector<std::shared_ptr<Lexem>> inner);
+        Group(std::vector<std::shared_ptr<Lexem>> inner,
               std::unique_ptr<ParenPair> surrounding);
 
         std::string debug(std::size_t depth = 0) const override;
@@ -40,5 +40,5 @@ namespace ejdi::lexer::groups {
             , cl_span(cl_span) {}
     };
 
-    std::unique_ptr<Group> find_groups(std::vector<std::unique_ptr<Lexem>> lexems);
+    std::shared_ptr<Group> find_groups(std::vector<std::unique_ptr<Lexem>> lexems);
 }

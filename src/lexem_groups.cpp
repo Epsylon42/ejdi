@@ -13,7 +13,7 @@ using namespace ejdi::lexer::groups;
 using ejdi::span::Span;
 
 
-Span span_sum(const vector<unique_ptr<Lexem>>& lexems) {
+Span span_sum(const vector<shared_ptr<Lexem>>& lexems) {
     if (lexems.empty()) {
         return Span::empty();
     }
@@ -25,7 +25,7 @@ Span span_sum(const vector<unique_ptr<Lexem>>& lexems) {
     return lexems.front()->span.join(lexems.back()->span);
 }
 
-string lexems_join(const vector<unique_ptr<Lexem>>& lexems) {
+string lexems_join(const vector<shared_ptr<Lexem>>& lexems) {
     return accumulate(
         lexems.cbegin(), lexems.cend(), string(),
         [](string&& acc, const auto& elem) {
@@ -39,12 +39,12 @@ string lexems_join(const vector<unique_ptr<Lexem>>& lexems) {
 }
 
 
-Group::Group(vector<unique_ptr<Lexem>> inner)
+Group::Group(vector<shared_ptr<Lexem>> inner)
     : Lexem(span_sum(inner), lexems_join(inner))
     , surrounding(nullopt)
     , inner(move(inner)) {}
 
-Group::Group(vector<unique_ptr<Lexem>> inner, std::unique_ptr<ParenPair> surrounding)
+Group::Group(vector<shared_ptr<Lexem>> inner, std::unique_ptr<ParenPair> surrounding)
     : Lexem(surrounding->span,
             surrounding->op->str + " " + lexems_join(inner) + " " + surrounding->cl->str)
     , surrounding(move(surrounding))
@@ -104,12 +104,12 @@ static I find_closing(Span op_span, const Paren& op, I begin, I end) {
 
 
 template< typename I >
-static unique_ptr<Group> find_groups_range(optional<unique_ptr<ParenPair>> surrounding, I begin, I end) {
+static shared_ptr<Group> find_groups_range(optional<unique_ptr<ParenPair>> surrounding, I begin, I end) {
     if (begin >= end) {
-        return make_unique<Group>(vector<unique_ptr<Lexem>>());
+        return make_unique<Group>(vector<shared_ptr<Lexem>>());
     }
 
-    vector<unique_ptr<Lexem>> inner;
+    vector<shared_ptr<Lexem>> inner;
 
     while (begin < end) {
         auto opt_paren = (*begin)->template downcast_ref<Paren>();
@@ -135,19 +135,19 @@ static unique_ptr<Group> find_groups_range(optional<unique_ptr<ParenPair>> surro
                 throw UnbalancedParenthesis(paren->span, paren->span);
             }
         } else {
-            inner.push_back(move(*begin));
+            inner.emplace_back(begin->release());
         }
 
         ++begin;
     }
 
     if (surrounding.has_value()) {
-        return make_unique<Group>(move(inner), move(*surrounding));
+        return make_shared<Group>(move(inner), move(*surrounding));
     } else {
-        return make_unique<Group>(move(inner));
+        return make_shared<Group>(move(inner));
     }
 }
 
-unique_ptr<Group> groups::find_groups(std::vector<std::unique_ptr<Lexem>> lexems) {
+shared_ptr<Group> groups::find_groups(std::vector<std::unique_ptr<Lexem>> lexems) {
     return find_groups_range(nullopt, lexems.begin(), lexems.end());
 }
