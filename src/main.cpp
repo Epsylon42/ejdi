@@ -16,5 +16,13 @@ int main() {
 
     parser::ParseStream stream(grouped->inner);
     auto expr = parser::parse<ast::Block>(stream);
-    std::cout << expr->debug() << std::endl;
+    if (expr.has_result()) {
+        std::cout << expr.get()->debug() << std::endl;
+    } else {
+        auto& error = expr.error();
+        std::cout << "at " << error.span.start
+                  << " expected " << error.expected
+                  << " but got " << error.got
+                  << std::endl;
+    }
 }

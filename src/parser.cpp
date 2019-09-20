@@ -3,6 +3,7 @@
 using namespace std;
 using namespace ejdi;
 using namespace ejdi::parser;
+using namespace ejdi::parser::result;
 using ejdi::span::Span;
 
 ParseStream ParseStream::clone() const {
@@ -21,40 +22,44 @@ Span ParseStream::span() const {
     }
 }
 
-
-const char* error::ParserError::what() const noexcept {
-    return error.c_str();
+string ParseStream::str() const {
+    if (is_empty()) {
+        return "";
+    } else {
+        return (*begin)->str;
+    }
 }
 
-
-const char* error::UnexpectedEoi::what() const noexcept {
-    return "bbbbbbbbb";
+unique_ptr<ParserError> ParseStream::expected(string expected) const {
+    return make_unique<ParserError>(span(), move(expected), str());
 }
-
-
 
 
 template<>
-shared_ptr<ast::Expr> parser::parse<ast::Expr>(ParseStream& in) {
-    try {
-        auto stream = in.clone();
-        auto word = parse<lexer::Word>(stream);
+ParserResult<ast::Expr> parser::parse<ast::Expr>(ParseStream& in) {
+    auto stream = in.clone();
+    auto word = parse<lexer::Word>(stream);
+    if (word.has_result()) {
         in = stream;
-        return make_shared<ast::Variable>(*word);
-    } catch (error::ParserError& e) {}
+        return word.map<ast::Variable>(
+            [](auto word){ return make_shared<ast::Variable>(*word); }
+            );
+    }
 
-    return parse<ast::Block>(in);
+    auto block = PARSER_TRY(parse<ast::Block>(stream));
+    in = stream;
+    return ParserResult(block);
 }
 
 template<>
-shared_ptr<ast::Assignment> parser::parse<ast::Assignment>(ParseStream& in) {
+ParserResult<ast::Assignment> parser::parse<ast::Assignment>(ParseStream& in) {
     auto stream = in.clone();
 
     auto let = parse_opt<lexer::Word>(stream, "let");
-    auto variable = parse<lexer::Word>(stream);
-    auto assignment = parse<lexer::Punct>(stream, "=");
-    auto expr = parse<ast::Expr>(stream);
-    auto semi = parse<lexer::Punct>(stream, ";");
+    auto variable = PARSER_TRY(parse<lexer::Word>(stream));
+    auto assignment = PARSER_TRY(parse<lexer::Punct>(stream, "="));
+    auto expr = PARSER_TRY(parse<ast::Expr>(stream));
+    auto semi = PARSER_TRY(parse<lexer::Punct>(stream, ";"));
 
     in = stream;
 
@@ -70,11 +75,11 @@ shared_ptr<ast::Assignment> parser::parse<ast::Assignment>(ParseStream& in) {
 }
 
 template<>
-shared_ptr<ast::ExprStmt> parser::parse<ast::ExprStmt>(ParseStream& in) {
+ParserResult<ast::ExprStmt> parser::parse<ast::ExprStmt>(ParseStream& in) {
     auto stream = in.clone();
 
-    auto expr = parse<ast::Expr>(stream);
-    auto semi = parse<lexer::Punct>(stream, ";");
+    auto expr = PARSER_TRY(parse<ast::Expr>(stream));
+    auto semi = PARSER_TRY(parse<lexer::Punct>(stream, ";"));
 
     in = stream;
 
@@ -85,25 +90,27 @@ shared_ptr<ast::ExprStmt> parser::parse<ast::ExprStmt>(ParseStream& in) {
 }
 
 template<>
-shared_ptr<ast::Stmt> parser::parse<ast::Stmt>(ParseStream& in) {
+ParserResult<ast::Stmt> parser::parse<ast::Stmt>(ParseStream& in) {
     //TODO: improve error handling
-    try {
-        auto stream = in.clone();
-        auto res = parse<ast::Assignment>(stream);
-        in = stream;
-        return res;
-    } catch (error::ParserError& e) {}
-
     auto stream = in.clone();
+    auto assignment = parse<ast::Assignment>(stream);
+    if (assignment.has_result()) {
+        in = stream;
+        return assignment;
+    }
+
+    stream = in.clone();
+
     auto res = parse<ast::ExprStmt>(stream);
+
     in = stream;
     return res;
 }
 
 template<>
-shared_ptr<ast::Block> parser::parse<ast::Block>(ParseStream& in) {
+ParserResult<ast::Block> parser::parse<ast::Block>(ParseStream& in) {
     auto stream = in.clone();
-    auto group = parse<lexer::groups::Group>(stream);
+    auto group = PARSER_TRY(parse<lexer::groups::Group>(stream));
     optional<lexer::groups::ParenPair> parens;
     if (group->surrounding.has_value()) {
         parens = move(**group->surrounding);
@@ -116,18 +123,19 @@ shared_ptr<ast::Block> parser::parse<ast::Block>(ParseStream& in) {
             break;
         }
 
-        try {
-            auto group_stream_clone = group_stream.clone();
-            statements.push_back(parse<ast::Stmt>(group_stream_clone));
+        auto group_stream_clone = group_stream.clone();
+        auto stmt = parse<ast::Stmt>(group_stream_clone);
+        if (stmt.has_result()) {
+            statements.push_back(*stmt.opt());
             group_stream = group_stream_clone;
-        } catch(error::ParserError& e) {
-            auto expr = parse<ast::Expr>(group_stream);
+        } else {
+            auto expr = PARSER_TRY(parse<ast::Expr>(group_stream));
             if (!group_stream.is_empty()) {
-                throw;
-            } else {
-                in = stream;
-                return make_shared<ast::Block>(move(parens), move(statements), move(expr));
+                return group_stream.expected("; or }");
             }
+
+            in = stream;
+            return make_shared<ast::Block>(move(parens), move(statements), move(expr));
         }
     }
 
