@@ -13,40 +13,65 @@ using namespace ejdi::lexer::groups;
 using ejdi::span::Span;
 
 
-Span span_sum(const vector<shared_ptr<Lexem>>& lexems) {
+Span span_sum(const vector<LexemTree>& lexems) {
     if (lexems.empty()) {
         return Span::empty();
     }
 
     if (lexems.size() == 1) {
-        return lexems.front()->span;
+        return get_span(lexems.front());
     }
 
-    return lexems.front()->span.join(lexems.back()->span);
+    return get_span(lexems.front()).join(get_span(lexems.back()));
 }
 
-string lexems_join(const vector<shared_ptr<Lexem>>& lexems) {
+string lexems_join(const vector<LexemTree>& lexems) {
     return accumulate(
         lexems.cbegin(), lexems.cend(), string(),
         [](string&& acc, const auto& elem) {
             if (!acc.empty()) {
                 acc += " ";
             }
-            acc += elem->str;
+            acc += get_str(elem);
             return acc;
         }
         );
 }
 
 
-Group::Group(vector<shared_ptr<Lexem>> inner)
-    : Lexem(span_sum(inner), lexems_join(inner))
+Span groups::get_span(const LexemTree& tree) {
+    if (lexem_is_group(tree)) {
+        return get<0>(tree)->span;
+    } else {
+        return get_span(get<1>(tree));
+    }
+}
+
+string_view groups::get_str(const LexemTree& tree) {
+    if (lexem_is_group(tree)) {
+        return get<0>(tree)->str;
+    } else {
+        return get_str(get<1>(tree));
+    }
+}
+
+string groups::lexem_debug(const LexemTree& tree, size_t depth) {
+    if (lexem_is_group(tree)) {
+        return get<0>(tree)->debug(depth);
+    } else {
+        return lexem_debug(get<1>(tree), depth);
+    }
+}
+
+
+Group::Group(vector<LexemTree> inner)
+    : LexemBase(span_sum(inner), lexems_join(inner))
     , surrounding(nullopt)
     , inner(move(inner)) {}
 
-Group::Group(vector<shared_ptr<Lexem>> inner, std::unique_ptr<ParenPair> surrounding)
-    : Lexem(surrounding->span,
-            surrounding->op->str + " " + lexems_join(inner) + " " + surrounding->cl->str)
+Group::Group(vector<LexemTree> inner, ParenPair surrounding)
+    : LexemBase(surrounding.span,
+            surrounding.op.str + " " + lexems_join(inner) + " " + surrounding.cl.str)
     , surrounding(move(surrounding))
     , inner(move(inner)) {}
 
@@ -59,12 +84,12 @@ string Group::debug(size_t depth) const {
     ret += "group";
     if (surrounding.has_value()) {
         ret += ' ';
-        ret += (*surrounding)->str;
+        ret += surrounding->str;
     }
 
     for (const auto& lexem : inner) {
         ret += '\n';
-        ret += lexem->debug(depth + 1);
+        ret += lexem_debug(lexem, depth + 1);
     }
 
     return ret;
@@ -77,18 +102,16 @@ static I find_closing(Span op_span, const Paren& op, I begin, I end) {
     st.push(&op);
 
     while (begin < end) {
-        auto opt_paren = (*begin)-> template downcast_ref<Paren>();
-        if (opt_paren.has_value()) {
-            auto paren = *opt_paren;
+        if (lexem_is<Paren>(*begin)) {
+            const auto& paren = get<Paren>(*begin);
 
-            if (paren->opening) {
-                st.push(paren);
-            } else if (st.top()->op == paren->op) {
+            if (paren.opening) {
+                st.push(&paren);
+            } else if (st.top()->op == paren.op) {
                 //TODO: use more robust comparison
-
                 st.pop();
             } else {
-                throw UnbalancedParenthesis(op_span.join(paren->span), paren->span);
+                throw UnbalancedParenthesis(op_span.join(paren.span), paren.span);
             }
         }
 
@@ -104,38 +127,35 @@ static I find_closing(Span op_span, const Paren& op, I begin, I end) {
 
 
 template< typename I >
-static shared_ptr<Group> find_groups_range(optional<unique_ptr<ParenPair>> surrounding, I begin, I end) {
+static shared_ptr<Group> find_groups_range(optional<ParenPair> surrounding, I begin, I end) {
     if (begin >= end) {
-        return make_unique<Group>(vector<shared_ptr<Lexem>>());
+        return make_shared<Group>(vector<LexemTree>());
     }
 
-    vector<shared_ptr<Lexem>> inner;
+    vector<LexemTree> inner;
 
     while (begin < end) {
-        auto opt_paren = (*begin)->template downcast_ref<Paren>();
+        if (lexem_is<Paren>(*begin)) {
+            const auto& paren = get<Paren>(*begin);
 
-        if (opt_paren.has_value() && (*opt_paren)->opening) {
-            auto paren = *opt_paren;
-
-            auto closing = find_closing(paren->span, *paren, next(begin), end);
-            auto surround =
-                make_unique<ParenPair>(
-                    Lexem::downcast_unique<Paren>(move(*begin)).value(),
-                    Lexem::downcast_unique<Paren>(move(*closing)).value()
+            if (paren.opening) {
+                auto closing = find_closing(paren.span, paren, next(begin), end);
+                auto surround = ParenPair(
+                    move(get<Paren>(*begin)),
+                    move(get<Paren>(*closing))
                     );
 
-            inner.push_back(find_groups_range(move(surround), next(begin), closing));
-            begin = closing;
-        } else if (opt_paren.has_value() && !(*opt_paren)->opening) {
-            auto paren = *opt_paren;
-
-            if (surrounding.has_value()) {
-                throw UnbalancedParenthesis((*surrounding)->op->span.join(paren->span), paren->span);
+                inner.push_back(find_groups_range(move(surround), next(begin), closing));
+                begin = closing;
             } else {
-                throw UnbalancedParenthesis(paren->span, paren->span);
+                if (surrounding.has_value()) {
+                    throw UnbalancedParenthesis(surrounding->op.span.join(paren.span), paren.span);
+                } else {
+                    throw UnbalancedParenthesis(paren.span, paren.span);
+                }
             }
         } else {
-            inner.emplace_back(begin->release());
+            inner.push_back(move(*begin));
         }
 
         ++begin;
@@ -148,6 +168,6 @@ static shared_ptr<Group> find_groups_range(optional<unique_ptr<ParenPair>> surro
     }
 }
 
-shared_ptr<Group> groups::find_groups(std::vector<std::unique_ptr<Lexem>> lexems) {
+shared_ptr<Group> groups::find_groups(std::vector<Lexem> lexems) {
     return find_groups_range(nullopt, lexems.begin(), lexems.end());
 }

@@ -14,10 +14,10 @@
 
 namespace ejdi::parser {
     struct ParseStream {
-        std::vector<std::shared_ptr<lexer::Lexem>>::iterator begin;
-        std::vector<std::shared_ptr<lexer::Lexem>>::iterator end;
+        std::vector<lexer::groups::LexemTree>::iterator begin;
+        std::vector<lexer::groups::LexemTree>::iterator end;
 
-        ParseStream(std::vector<std::shared_ptr<lexer::Lexem>>& lexems)
+        ParseStream(std::vector<lexer::groups::LexemTree>& lexems)
             : begin(lexems.begin())
             , end(lexems.end()) {}
 
@@ -33,22 +33,23 @@ namespace ejdi::parser {
 
         template< typename T >
         result::ParserResult<T> parse(std::optional<std::string_view> str = std::nullopt) {
+            using namespace result;
+            using namespace lexer::groups;
+
             if (begin >= end) {
-                return std::make_unique<result::UnexpectedEoi>(std::string(str.value_or(T::NAME)));
+                return std::make_unique<UnexpectedEoi>(std::string(str.value_or(typeid(T).name())));
             }
 
-            try {
-                dynamic_cast<T&>(**begin);
-                auto ret = std::dynamic_pointer_cast<T>(*begin);
-
-                if (!str.has_value() || ret->str == *str) {
+            if (lexem_is<T>(*begin)) {
+                if (!str.has_value() || get_str(*begin) == *str) {
+                    auto ret = lexer_get<T>(*begin);
                     ++begin;
                     return ret;
                 } else {
-                    return std::make_unique<result::ParserError>(span(), std::string(*str), (*begin)->str);
+                    return std::make_unique<ParserError>(span(), std::string(*str), std::string(get_str(*begin)));
                 }
-            } catch (std::bad_cast& e) {
-                return std::make_unique<result::ParserError>(span(), std::string(str.value_or(T::NAME)), (*begin)->str);
+            } else {
+                return std::make_unique<ParserError>(span(), std::string(str.value_or(typeid(T).name())), std::string(get_str(*begin)));
             }
         }
     };
@@ -65,7 +66,7 @@ namespace ejdi::parser {
     }
 
     template< typename T, typename... Args >
-    std::optional<std::shared_ptr<T>> parse_opt(ParseStream& in, Args... args) {
+    std::optional<T> try_parse(ParseStream& in, Args... args) {
         auto stream = in.clone();
         auto res = parse<T>(stream, args...).opt();
         in = stream;
@@ -75,11 +76,11 @@ namespace ejdi::parser {
     template<>
     result::ParserResult<ast::Expr> parse<ast::Expr>(ParseStream& in);
     template<>
-    result::ParserResult<ast::Assignment> parse<ast::Assignment>(ParseStream& in);
+    result::ParserResult<ast::Rc<ast::Assignment>> parse<ast::Rc<ast::Assignment>>(ParseStream& in);
     template<>
-    result::ParserResult<ast::ExprStmt> parse<ast::ExprStmt>(ParseStream& in);
+    result::ParserResult<ast::Rc<ast::ExprStmt>> parse<ast::Rc<ast::ExprStmt>>(ParseStream& in);
     template<>
     result::ParserResult<ast::Stmt> parse<ast::Stmt>(ParseStream& in);
     template<>
-    result::ParserResult<ast::Block> parse<ast::Block>(ParseStream& in);
+    result::ParserResult<ast::Rc<ast::Block>> parse<ast::Rc<ast::Block>>(ParseStream& in);
 }

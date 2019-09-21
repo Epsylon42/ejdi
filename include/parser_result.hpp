@@ -47,14 +47,16 @@ namespace ejdi::parser::result {
 
     template< typename T >
     struct ParserResult {
-        std::variant<std::shared_ptr<T>, std::unique_ptr<ParserError>> res;
+        std::variant<T, std::unique_ptr<ParserError>> res;
 
-        ParserResult(std::shared_ptr<T> val) : res(std::move(val)) {}
+        ParserResult(T val) : res(std::move(val)) {}
         ParserResult(std::unique_ptr<ParserError> err) : res(std::move(err)) {}
         ParserResult(std::unique_ptr<UnexpectedEoi> err)
             : res(std::unique_ptr<ParserError>(err.release())) {}
 
-        inline std::optional<std::shared_ptr<T>> opt() {
+        ParserResult(const ParserResult& other) = delete;
+
+        inline std::optional<T> opt() {
             if (has_result()) {
                 return std::move(std::get<0>(res));
             } else {
@@ -63,10 +65,10 @@ namespace ejdi::parser::result {
         }
 
         inline bool has_result() const {
-            return std::holds_alternative<std::shared_ptr<T>>(res);
+            return res.index() == 0;
         }
 
-        inline std::shared_ptr<T> get() {
+        inline T& get() {
             return std::get<0>(res);
         }
 
@@ -86,8 +88,7 @@ namespace ejdi::parser::result {
         template< typename U >
         operator ParserResult<U>() {
             if (has_result()) {
-                dynamic_cast<U&>(*std::get<0>(res));
-                return std::dynamic_pointer_cast<U>(std::get<0>(res));
+                throw std::runtime_error("This is probably a bug in PARSER_TRY");
             } else {
                 return ParserResult<U>(std::move(std::get<1>(res)));
             }

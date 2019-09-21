@@ -2,6 +2,7 @@
 
 using namespace std;
 using namespace ejdi;
+using namespace ejdi::ast;
 
 string ast::Assignment::debug(size_t depth) const {
     string res;
@@ -16,13 +17,13 @@ string ast::Assignment::debug(size_t depth) const {
         res += ' ';
     }
 
-    res += variable.debug();
+    res += ast_debug(variable);
     res += ' ';
-    res += assignment.debug();
+    res += ast_debug(assignment);
     res += ' ';
-    res += expr->debug();
+    res += ast_debug(expr);
     res += ' ';
-    res += semi.debug();
+    res += ast_debug(semi);
 
     return res;
 }
@@ -34,9 +35,9 @@ string ast::ExprStmt::debug(size_t depth) const {
         res += "  ";
     }
 
-    res += expr->debug();
+    res += ast_debug(expr);
     res += ' ';
-    res += semi.debug();
+    res += ast_debug(semi);
 
     return res;
 }
@@ -48,7 +49,7 @@ string ast::Variable::debug(size_t depth) const {
         res += "  ";
     }
 
-    res += "var(" + variable.debug() + ")";
+    res += "var(" + ast_debug(variable) + ")";
 
     return res;
 }
@@ -64,18 +65,18 @@ string ast::Block::debug(size_t depth) const {
 
     for (const auto& st : statements) {
         res += '\n';
-        res += st->debug(depth + 1);
+        res += ast_debug(st, depth + 1);
     }
 
     if (ret.has_value()) {
         res += '\n';
-        res += (*ret)->debug(depth + 1);
+        res += ast_debug(*ret, depth + 1);
     }
 
     return res;
 }
 
 
-string ast::Paren::debug(size_t depth) const {
+string ast::ParenExpr::debug(size_t depth) const {
     return "unimplemented";
 }

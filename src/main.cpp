@@ -3,6 +3,7 @@
 #include <span.hpp>
 #include <lexer.hpp>
 #include <lexem_groups.hpp>
+#include <ast.hpp>
 #include <parser.hpp>
 
 using namespace ejdi;
@@ -12,12 +13,12 @@ int main() {
     // auto example = "(1 [+] 1) 5";
 
     auto lexems = lexer::actions::split_string(example, "");
-    auto grouped = lexer::groups::find_groups(move(lexems));
+    auto group = lexer::groups::find_groups(move(lexems));
 
-    parser::ParseStream stream(grouped->inner);
-    auto expr = parser::parse<ast::Block>(stream);
+    parser::ParseStream stream(group->inner);
+    auto expr = parser::parse<std::shared_ptr<ast::Block>>(stream);
     if (expr.has_result()) {
-        std::cout << expr.get()->debug() << std::endl;
+        std::cout << ast::ast_debug(expr.get()) << std::endl;
     } else {
         auto& error = expr.error();
         std::cout << "at " << error.span.start

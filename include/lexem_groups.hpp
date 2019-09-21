@@ -2,28 +2,68 @@
 
 #include <exception>
 #include <cstdint>
+#include <variant>
 
+#include <span.hpp>
 #include <lexer.hpp>
 
 namespace ejdi::lexer::groups {
-    struct ParenPair : Lexem {
-        std::unique_ptr<Paren> op;
-        std::unique_ptr<Paren> cl;
+    struct ParenPair : LexemBase {
+        Paren op;
+        Paren cl;
 
-        ParenPair(std::unique_ptr<Paren> op, std::unique_ptr<Paren> cl)
-            : Lexem(op->span.join(cl->span), op->str + cl->str)
+        ParenPair(Paren op, Paren cl)
+            : LexemBase(op.span.join(cl.span), op.str + cl.str)
             , op(std::move(op))
             , cl(std::move(cl)) {}
     };
 
+    struct Group;
 
-    struct Group : Lexem {
-        std::optional<std::unique_ptr<ParenPair>> surrounding;
-        std::vector<std::shared_ptr<Lexem>> inner;
+    using LexemTree = std::variant<std::shared_ptr<Group>, Lexem>;
 
-        Group(std::vector<std::shared_ptr<Lexem>> inner);
-        Group(std::vector<std::shared_ptr<Lexem>> inner,
-              std::unique_ptr<ParenPair> surrounding);
+
+    span::Span get_span(const LexemTree& tree);
+    std::string_view get_str(const LexemTree& tree);
+    std::string lexem_debug(const LexemTree& tree, std::size_t depth = 0);
+
+    template< typename T >
+    bool lexem_is(const LexemTree& tree) {
+        if (std::holds_alternative<Lexem>(tree)) {
+            return std::holds_alternative<T>(get<Lexem>(tree));
+        } else {
+            return false;
+        }
+    }
+
+    template<>
+    inline bool lexem_is<std::shared_ptr<Group>>(const LexemTree& tree) {
+        return tree.index() == 0;
+    }
+
+    inline bool lexem_is_group(const LexemTree& tree) {
+        return lexem_is<std::shared_ptr<Group>>(tree);
+    }
+
+
+    template< typename T >
+    T lexer_get(const LexemTree& tree) {
+        return std::get<T>(get<Lexem>(tree));
+    }
+
+    template<>
+    inline std::shared_ptr<Group> lexer_get<std::shared_ptr<Group>>(const LexemTree& tree) {
+        return std::get<std::shared_ptr<Group>>(tree);
+    }
+
+
+    struct Group : LexemBase {
+        std::optional<ParenPair> surrounding;
+        std::vector<LexemTree> inner;
+
+        Group(std::vector<LexemTree> inner);
+        Group(std::vector<LexemTree> inner,
+              ParenPair surrounding);
 
         std::string debug(std::size_t depth = 0) const override;
     };
@@ -40,5 +80,6 @@ namespace ejdi::lexer::groups {
             , cl_span(cl_span) {}
     };
 
-    std::shared_ptr<Group> find_groups(std::vector<std::unique_ptr<Lexem>> lexems);
+
+    std::shared_ptr<Group> find_groups(std::vector<Lexem> lexems);
 }

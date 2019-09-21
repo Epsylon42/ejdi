@@ -3,93 +3,94 @@
 #include <vector>
 #include <memory>
 #include <optional>
+#include <variant>
 
 #include <span.hpp>
 #include <lexer.hpp>
 #include <lexem_groups.hpp>
 
 namespace ejdi::ast {
-    struct AstNode {
-        virtual std::string debug(std::size_t depth = 0) const = 0;
+    template< typename T >
+    using Rc = std::shared_ptr<T>;
 
-        virtual ~AstNode() = default;
-    };
+    struct Assignment;
+    struct ExprStmt;
 
-    struct Expr;
-    struct Stmt;
+    struct Variable;
+    struct Block;
+    struct ParenExpr;
 
 
-    struct Stmt : AstNode {};
+    using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
+    using Expr = std::variant<Rc<Variable>, Rc<Block>, Rc<ParenExpr>>;
 
-    struct Assignment : Stmt {
+
+    struct Assignment {
         std::optional<lexer::Word> let;
         lexer::Word variable;
         lexer::Punct assignment;
-        std::shared_ptr<Expr> expr;
+        Expr expr;
         lexer::Punct semi;
 
-        Assignment(
-            std::optional<lexer::Word> let,
-            lexer::Word variable,
-            lexer::Punct assignment,
-            std::shared_ptr<Expr> expr,
-            lexer::Punct semi
-            )
-            : let(let)
-            , variable(variable)
-            , assignment(assignment)
-            , expr(expr)
-            , semi(semi) {}
-
-        std::string debug(std::size_t depth = 0) const override;
+        std::string debug(std::size_t depth = 0) const;
     };
 
-    struct ExprStmt : Stmt {
-        std::shared_ptr<Expr> expr;
+    struct ExprStmt {
+        Expr expr;
         lexer::Punct semi;
 
-        ExprStmt(
-            std::shared_ptr<Expr> expr,
-            lexer::Punct semi
-            )
-            : expr(expr)
-            , semi(semi) {}
-
-        std::string debug(std::size_t depth = 0) const override;
+        std::string debug(std::size_t depth = 0) const;
     };
 
 
-    struct Expr : AstNode {};
-
-    struct Variable : Expr {
+    struct Variable {
         lexer::Word variable;
 
-        Variable(lexer::Word variable) : variable(variable) {}
-
-        std::string debug(std::size_t depth = 0) const override;
+        std::string debug(std::size_t depth = 0) const;
     };
 
-    struct Block : Expr {
+    struct Block {
         std::optional<lexer::groups::ParenPair> parens;
-        std::vector<std::shared_ptr<Stmt>> statements;
-        std::optional<std::shared_ptr<Expr>> ret;
+        std::vector<Stmt> statements;
+        std::optional<Expr> ret;
 
-        Block(
-            std::optional<lexer::groups::ParenPair> parens,
-            std::vector<std::shared_ptr<Stmt>> statements,
-            std::optional<std::shared_ptr<Expr>> ret
-            )
-            : parens(std::move(parens))
-            , statements(std::move(statements))
-            , ret(std::move(ret)) {}
-
-        std::string debug(std::size_t depth = 0) const override;
+        std::string debug(std::size_t depth = 0) const;
     };
 
-    struct Paren : Expr {
+    struct ParenExpr {
         lexer::groups::ParenPair parens;
-        std::shared_ptr<Expr> inner;
+        Expr inner;
 
-        std::string debug(std::size_t depth = 0) const override;
+        std::string debug(std::size_t depth = 0) const;
     };
+
+
+    template< typename T, typename U >
+    bool ast_is(const U& ast) {
+        return std::holds_alternative<Rc<T>>(ast);
+    }
+
+    template< typename T, typename U >
+    Rc<T> ast_get(U&& ast) {
+        return std::get<Rc<T>>(ast);
+    }
+
+
+    template< typename T >
+    std::string ast_debug(const T& ast, std::size_t depth = 0) {
+        using lexer::lexem_debug;
+        using lexer::groups::lexem_debug;
+
+        return ast->debug(depth);
+    }
+
+    template<>
+    inline std::string ast_debug<Expr>(const Expr& ast, std::size_t depth) {
+        return std::visit([depth](const auto& expr){ return expr->debug(depth); }, ast);
+    }
+
+    template<>
+    inline std::string ast_debug<Stmt>(const Stmt& ast, std::size_t depth) {
+        return std::visit([depth](const auto& stmt){ return stmt->debug(depth); }, ast);
+    }
 }
