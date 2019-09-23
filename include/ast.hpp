@@ -20,10 +20,17 @@ namespace ejdi::ast {
     struct Block;
     struct ParenExpr;
     struct BinaryOp;
+    struct FunctionCall;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
-    using Expr = std::variant<Rc<Variable>, Rc<Block>, Rc<ParenExpr>, Rc<BinaryOp>>;
+    using Expr = std::variant<
+        Rc<Variable>,
+        Rc<Block>,
+        Rc<ParenExpr>,
+        Rc<BinaryOp>,
+        Rc<FunctionCall>
+    >;
 
 
     struct Assignment {
@@ -69,6 +76,19 @@ namespace ejdi::ast {
         lexer::Punct op;
         Expr left;
         Expr right;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    template< typename T >
+    struct List {
+        std::optional<lexer::groups::ParenPair> parens;
+        std::vector<T> list;
+    };
+
+    struct FunctionCall {
+        Expr function;
+        Rc<List<Expr>> arguments;
 
         std::string debug(std::size_t depth = 0) const;
     };

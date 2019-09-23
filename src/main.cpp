@@ -9,16 +9,16 @@
 using namespace ejdi;
 
 int main() {
-    auto example = "{ let a = b; a + b * c; c; { hello } }";
+    auto example = "{ hello() }()";
     // auto example = "(1 [+] 1) 5";
 
     auto lexems = lexer::actions::split_string(example, "");
     auto group = lexer::groups::find_groups(move(lexems));
 
     parser::ParseStream stream(group->inner);
-    auto expr = parser::parse<std::shared_ptr<ast::Block>>(stream);
+    auto expr = parser::parse_unary_expr(stream);
     if (expr.has_result()) {
-        std::cout << expr.get()->debug() << std::endl;
+        std::cout << ast::ast_debug(expr.get()) << std::endl;
     } else {
         auto& error = expr.error();
         std::cout << "at " << error.span.start

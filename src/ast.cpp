@@ -92,3 +92,26 @@ string ast::BinaryOp::debug(size_t depth) const {
 
     return res;
 }
+
+string ast::FunctionCall::debug(size_t depth) const {
+    string res;
+    for (size_t i = 0; i < depth; i++) {
+        res += "  ";
+    }
+
+    res += "function call ";
+    res += ast_debug(function);
+
+    res += '\n';
+    for (size_t i = 0; i < depth; i++) {
+        res += "  ";
+    }
+    res += "arguments";
+
+    for (const auto& arg : arguments->list) {
+        res += '\n';
+        res += ast_debug(arg, depth + 1);
+    }
+
+    return res;
+}

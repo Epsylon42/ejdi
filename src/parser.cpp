@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cassert>
 
 #include <parser.hpp>
 
@@ -49,18 +50,51 @@ unique_ptr<ParserError> ParseStream::expected(string expected) const {
 }
 
 
+ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
+    auto stream = in.clone();
+    auto word = parse<Word>(stream);
+    if (word.has_result()) {
+        in = stream;
+        return Expr(make_shared<Variable>(Variable{ word.get() }));
+    }
+
+    auto block = parse<Rc<Block>>(stream);
+    if (block.has_result()) {
+        in = stream;
+        return Expr(move(block.get()));
+    }
+
+    return in.expected("primary expression");
+}
+
+ParserResult<Expr> parser::parse_unary_expr(ParseStream& in) {
+    //TODO: implement unary operation parsing
+    auto primary = PARSER_TRY(parse_primary_expr(in));
+
+    auto args = parse_list<Expr>(in, "()");
+    if (args.has_result()) {
+        return Expr(
+            make_shared<FunctionCall>(
+                FunctionCall { move(primary), move(args.get()) }
+            )
+        );
+    } else {
+        return primary;
+    }
+}
+
 template<>
 ParserResult<Expr> parser::parse<Expr>(ParseStream& in) {
-    auto valid_ops = { "==", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
+    const auto valid_ops = { "==", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
 
-    auto left = PARSER_TRY(parse_atomic_expr(in));
+    auto left = PARSER_TRY(parse_unary_expr(in));
 
     if (any_of(
             valid_ops.begin(),
             valid_ops.end(),
             [&](auto valid_op){ return in.peek(valid_op); }
-        )
-    ) {
+            )
+        ) {
         auto stream = in;
         auto op = PARSER_TRY(parse<Punct>(stream));
         auto right = PARSER_TRY(parse<Expr>(stream));
@@ -69,25 +103,11 @@ ParserResult<Expr> parser::parse<Expr>(ParseStream& in) {
         return Expr(
             make_shared<BinaryOp>(
                 BinaryOp { move(op), move(left), move(right) }
-            )
-        );
+                )
+            );
     } else {
         return Expr(move(left));
     }
-}
-
-
-ParserResult<Expr> parser::parse_atomic_expr(ParseStream& in) {
-    auto stream = in.clone();
-    auto word = parse<Word>(stream);
-    if (word.has_result()) {
-        in = stream;
-        return Expr(make_shared<Variable>(Variable{ word.get() }));
-    }
-
-    auto block = PARSER_TRY(parse<Rc<Block>>(stream));
-    in = stream;
-    return Expr(move(block));
 }
 
 template<>
@@ -145,6 +165,9 @@ template<>
 ParserResult<Rc<Block>> parser::parse<Rc<Block>>(ParseStream& in) {
     auto stream = in.clone();
     auto group = PARSER_TRY(parse<Rc<Group>>(stream));
+    if (!group->surrounding || group->surrounding->str != "{}") {
+        return in.expected("block expression");
+    }
     auto parens = group->surrounding;
 
     vector<Stmt> statements;
