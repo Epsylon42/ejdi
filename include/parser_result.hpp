@@ -55,6 +55,7 @@ namespace ejdi::parser::result {
             : res(std::unique_ptr<ParserError>(err.release())) {}
 
         ParserResult(const ParserResult& other) = delete;
+        ParserResult(ParserResult&& other) = default;
 
         inline std::optional<T> opt() {
             if (has_result()) {

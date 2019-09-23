@@ -30,12 +30,7 @@ string ast::Assignment::debug(size_t depth) const {
 
 
 string ast::ExprStmt::debug(size_t depth) const {
-    string res;
-    for (size_t i = 0; i < depth; i++) {
-        res += "  ";
-    }
-
-    res += ast_debug(expr);
+    string res = ast_debug(expr, depth);
     res += ' ';
     res += ast_debug(semi);
 
@@ -79,4 +74,21 @@ string ast::Block::debug(size_t depth) const {
 
 string ast::ParenExpr::debug(size_t depth) const {
     return "unimplemented";
+}
+
+string ast::BinaryOp::debug(size_t depth) const {
+    string res;
+    for (size_t i = 0; i < depth; i++) {
+        res += "  ";
+    }
+
+    res += "binary op ";
+    res += get_str(op);
+
+    res += '\n';
+    res += ast_debug(left, depth + 1);
+    res += '\n';
+    res += ast_debug(right, depth + 1);
+
+    return res;
 }

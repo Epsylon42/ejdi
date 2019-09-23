@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <parser.hpp>
 
 using namespace std;
@@ -11,6 +13,14 @@ using ejdi::span::Span;
 
 ParseStream ParseStream::clone() const {
     return *this;
+}
+
+bool ParseStream::peek(string_view str) const {
+    if (is_empty()) {
+        return false;
+    }
+
+    return get_str(*begin) == str;
 }
 
 bool ParseStream::is_empty() const {
@@ -41,6 +51,33 @@ unique_ptr<ParserError> ParseStream::expected(string expected) const {
 
 template<>
 ParserResult<Expr> parser::parse<Expr>(ParseStream& in) {
+    auto valid_ops = { "==", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
+
+    auto left = PARSER_TRY(parse_atomic_expr(in));
+
+    if (any_of(
+            valid_ops.begin(),
+            valid_ops.end(),
+            [&](auto valid_op){ return in.peek(valid_op); }
+        )
+    ) {
+        auto stream = in;
+        auto op = PARSER_TRY(parse<Punct>(stream));
+        auto right = PARSER_TRY(parse<Expr>(stream));
+
+        in = stream;
+        return Expr(
+            make_shared<BinaryOp>(
+                BinaryOp { move(op), move(left), move(right) }
+            )
+        );
+    } else {
+        return Expr(move(left));
+    }
+}
+
+
+ParserResult<Expr> parser::parse_atomic_expr(ParseStream& in) {
     auto stream = in.clone();
     auto word = parse<Word>(stream);
     if (word.has_result()) {

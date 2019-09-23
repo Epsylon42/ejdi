@@ -19,10 +19,11 @@ namespace ejdi::ast {
     struct Variable;
     struct Block;
     struct ParenExpr;
+    struct BinaryOp;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
-    using Expr = std::variant<Rc<Variable>, Rc<Block>, Rc<ParenExpr>>;
+    using Expr = std::variant<Rc<Variable>, Rc<Block>, Rc<ParenExpr>, Rc<BinaryOp>>;
 
 
     struct Assignment {
@@ -64,6 +65,14 @@ namespace ejdi::ast {
         std::string debug(std::size_t depth = 0) const;
     };
 
+    struct BinaryOp {
+        lexer::Punct op;
+        Expr left;
+        Expr right;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
 
     template< typename T, typename U >
     bool ast_is(const U& ast) {
@@ -81,7 +90,7 @@ namespace ejdi::ast {
         using lexer::lexem_debug;
         using lexer::groups::lexem_debug;
 
-        return ast->debug(depth);
+        return ast.debug(depth);
     }
 
     template<>

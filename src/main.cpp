@@ -9,7 +9,7 @@
 using namespace ejdi;
 
 int main() {
-    auto example = "{ let a = b; b; c; { hello } }";
+    auto example = "{ let a = b; a + b * c; c; { hello } }";
     // auto example = "(1 [+] 1) 5";
 
     auto lexems = lexer::actions::split_string(example, "");
@@ -18,7 +18,7 @@ int main() {
     parser::ParseStream stream(group->inner);
     auto expr = parser::parse<std::shared_ptr<ast::Block>>(stream);
     if (expr.has_result()) {
-        std::cout << ast::ast_debug(expr.get()) << std::endl;
+        std::cout << expr.get()->debug() << std::endl;
     } else {
         auto& error = expr.error();
         std::cout << "at " << error.span.start

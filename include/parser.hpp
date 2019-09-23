@@ -25,6 +25,7 @@ namespace ejdi::parser {
         ParseStream& operator= (const ParseStream& other) = default;
 
 
+        bool peek(std::string_view str) const;
         bool is_empty() const;
         span::Span span() const;
         std::string str() const;
@@ -75,6 +76,9 @@ namespace ejdi::parser {
 
     template<>
     result::ParserResult<ast::Expr> parse<ast::Expr>(ParseStream& in);
+
+    result::ParserResult<ast::Expr> parse_atomic_expr(ParseStream& in);
+
     template<>
     result::ParserResult<ast::Rc<ast::Assignment>> parse<ast::Rc<ast::Assignment>>(ParseStream& in);
     template<>
