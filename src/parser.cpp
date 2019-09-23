@@ -68,19 +68,47 @@ ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
 }
 
 ParserResult<Expr> parser::parse_unary_expr(ParseStream& in) {
-    //TODO: implement unary operation parsing
-    auto primary = PARSER_TRY(parse_primary_expr(in));
+    const auto valid_ops = { "!", "+", "-" };
 
-    auto args = parse_list<Expr>(in, "()");
-    if (args.has_result()) {
-        return Expr(
-            make_shared<FunctionCall>(
-                FunctionCall { move(primary), move(args.get()) }
+    auto stream = in.clone();
+
+    vector<Punct> ops;
+    while (true) {
+        if (any_of(
+                valid_ops.begin(),
+                valid_ops.end(),
+                [&](auto valid_op){ return stream.peek(valid_op); }
             )
-        );
-    } else {
-        return primary;
+        ) {
+            ops.push_back(parse<Punct>(stream).get());
+        } else {
+            break;
+        }
     }
+
+    auto primary = PARSER_TRY(parse_primary_expr(stream));
+
+    while (true) {
+        auto args = parse_list<Expr>(stream, "()");
+        if (args.has_result()) {
+            primary = Expr(
+                make_shared<FunctionCall>(
+                    FunctionCall { move(primary), move(args.get()) }
+                )
+            );
+        } else {
+            break;
+        }
+    }
+
+    while (!ops.empty()) {
+        primary = Expr(make_shared<UnaryOp>(UnaryOp { move(ops.back()), move(primary) }));
+        ops.pop_back();
+    }
+
+    in = stream;
+
+    return primary;
 }
 
 template<>

@@ -9,14 +9,14 @@
 using namespace ejdi;
 
 int main() {
-    auto example = "{ hello() }()";
+    auto example = "hello()() + -world";
     // auto example = "(1 [+] 1) 5";
 
     auto lexems = lexer::actions::split_string(example, "");
     auto group = lexer::groups::find_groups(move(lexems));
 
     parser::ParseStream stream(group->inner);
-    auto expr = parser::parse_unary_expr(stream);
+    auto expr = parser::parse<ast::Expr>(stream);
     if (expr.has_result()) {
         std::cout << ast::ast_debug(expr.get()) << std::endl;
     } else {

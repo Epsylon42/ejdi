@@ -20,6 +20,7 @@ namespace ejdi::ast {
     struct Block;
     struct ParenExpr;
     struct BinaryOp;
+    struct UnaryOp;
     struct FunctionCall;
 
 
@@ -29,6 +30,7 @@ namespace ejdi::ast {
         Rc<Block>,
         Rc<ParenExpr>,
         Rc<BinaryOp>,
+        Rc<UnaryOp>,
         Rc<FunctionCall>
     >;
 
@@ -76,6 +78,13 @@ namespace ejdi::ast {
         lexer::Punct op;
         Expr left;
         Expr right;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct UnaryOp {
+        lexer::Punct op;
+        Expr expr;
 
         std::string debug(std::size_t depth = 0) const;
     };
