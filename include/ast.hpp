@@ -22,6 +22,8 @@ namespace ejdi::ast {
     struct BinaryOp;
     struct UnaryOp;
     struct FunctionCall;
+    struct WhileLoop;
+    struct IfThenElse;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
@@ -31,7 +33,9 @@ namespace ejdi::ast {
         Rc<ParenExpr>,
         Rc<BinaryOp>,
         Rc<UnaryOp>,
-        Rc<FunctionCall>
+        Rc<FunctionCall>,
+        Rc<WhileLoop>,
+        Rc<IfThenElse>
     >;
 
 
@@ -98,6 +102,23 @@ namespace ejdi::ast {
     struct FunctionCall {
         Expr function;
         Rc<List<Expr>> arguments;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct WhileLoop {
+        lexer::Word while_;
+        Expr condition;
+        Rc<Block> block;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct IfThenElse {
+        lexer::Word if_;
+        Expr condition;
+        Rc<Block> then;
+        std::optional<std::tuple<lexer::Word, Expr>> else_;
 
         std::string debug(std::size_t depth = 0) const;
     };

@@ -7,13 +7,32 @@
 
 #include <span.hpp>
 
-#define PARSER_TRY(result)                      \
+#define TRY(result)                             \
     ({                                          \
         auto res = result;                      \
         if (!res.has_result()) {                \
             return res;                         \
         }                                       \
-        std::get<0>(res.res);                   \
+        std::get<0>(move(res.res));             \
+    })
+
+#define TRY_CRITICAL(result)                    \
+    ({                                          \
+        auto res = result;                      \
+        if (!res.has_result()) {                \
+            res.error().critical = true;        \
+            return res;                         \
+        }                                       \
+        std::get<0>(move(res.res));             \
+    })
+
+#define DO(result)                                        \
+    ({                                                    \
+        auto res = result;                                \
+        if (!res.has_result() && res.error().critical) {  \
+            return res;                                   \
+        }                                                 \
+        move(res);                                        \
     })
 
 
@@ -24,6 +43,7 @@ namespace ejdi::parser::result {
         span::Span span;
         std::string expected;
         std::string got;
+        bool critical = false;
 
         std::optional<std::unique_ptr<ParserError>> cause;
 

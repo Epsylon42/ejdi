@@ -17,9 +17,20 @@ namespace ejdi::parser {
         std::vector<lexer::groups::LexemTree>::iterator begin;
         std::vector<lexer::groups::LexemTree>::iterator end;
 
+    private:
+        // nullable
+        lexer::groups::Group* parent = nullptr;
+    public:
+
         ParseStream(std::vector<lexer::groups::LexemTree>& lexems)
             : begin(lexems.begin())
             , end(lexems.end()) {}
+
+        ParseStream(lexer::groups::Group& parent)
+            : ParseStream(parent.inner)
+        {
+            this->parent = &parent;
+        }
 
         ParseStream clone() const;
         ParseStream& operator= (const ParseStream& other) = default;
@@ -88,6 +99,10 @@ namespace ejdi::parser {
     result::ParserResult<ast::Stmt> parse<ast::Stmt>(ParseStream& in);
     template<>
     result::ParserResult<ast::Rc<ast::Block>> parse<ast::Rc<ast::Block>>(ParseStream& in);
+    template<>
+    result::ParserResult<ast::Rc<ast::WhileLoop>> parse<ast::Rc<ast::WhileLoop>>(ParseStream& in);
+    template<>
+    result::ParserResult<ast::Rc<ast::IfThenElse>> parse<ast::Rc<ast::IfThenElse>>(ParseStream& in);
 
     template< typename T >
     result::ParserResult<ast::Rc<ast::List<T>>> parse_list(ParseStream& in, std::optional<std::string_view> parens) {
@@ -98,7 +113,7 @@ namespace ejdi::parser {
         using namespace ejdi::parser::result;
 
         auto stream = in;
-        auto group = PARSER_TRY(parse<Rc<Group>>(stream));
+        auto group = TRY(parse<Rc<Group>>(stream));
 
         if (parens.has_value()) {
             if (group->surrounding.has_value() && group->surrounding->str != *parens) {
@@ -112,10 +127,10 @@ namespace ejdi::parser {
         vector<T> items;
 
         while (!group_stream.is_empty()) {
-            items.push_back(PARSER_TRY(parse<T>(group_stream)));
+            items.push_back(TRY(parse<T>(group_stream)));
 
             if (group_stream.peek(",")) {
-                PARSER_TRY(parse<Punct>(group_stream, ","));
+                TRY(parse<Punct>(group_stream, ","));
                 if (group_stream.is_empty()) {
                     return group_stream.expected(typeid(T).name());
                 }

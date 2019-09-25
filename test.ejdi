@@ -1,0 +1,21 @@
+{
+    let hello = world;
+    a = b;
+
+    c = a + b * { c + d };
+
+    hello(world);
+    hello(world());
+
+    if true { 
+        print(true);
+    } else if abc {
+        print(abc);
+    } else {
+        print(false);
+    };
+
+    while true {
+        print (while);
+    };
+}
