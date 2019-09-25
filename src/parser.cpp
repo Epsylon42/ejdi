@@ -211,15 +211,18 @@ ParserResult<Stmt> parser::parse<Stmt>(ParseStream& in) {
     auto assignment = DO(parse<Rc<Assignment>>(stream));
     if (assignment.has_result()) {
         in = stream;
-        return Stmt(assignment.get());
+        return Stmt(move(assignment.get()));
     }
 
     stream = in.clone();
 
-    auto res = TRY(parse<Rc<ExprStmt>>(stream));
+    auto expr_stmt = DO(parse<Rc<ExprStmt>>(stream));
+    if (expr_stmt.has_result()) {
+        in = stream;
+        return Stmt(move(expr_stmt.get()));
+    }
 
-    in = stream;
-    return Stmt(res);
+    return in.expected("statement");
 }
 
 template<>
