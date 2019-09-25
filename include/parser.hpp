@@ -103,6 +103,10 @@ namespace ejdi::parser {
     result::ParserResult<ast::Rc<ast::WhileLoop>> parse<ast::Rc<ast::WhileLoop>>(ParseStream& in);
     template<>
     result::ParserResult<ast::Rc<ast::IfThenElse>> parse<ast::Rc<ast::IfThenElse>>(ParseStream& in);
+    template<>
+    result::ParserResult<ast::Rc<ast::NumberLiteral>> parse<ast::Rc<ast::NumberLiteral>>(ParseStream& in);
+    template<>
+    result::ParserResult<ast::Rc<ast::StringLiteral>> parse<ast::Rc<ast::StringLiteral>>(ParseStream& in);
 
     template< typename T >
     result::ParserResult<ast::Rc<ast::List<T>>> parse_list(ParseStream& in, std::optional<std::string_view> parens) {

@@ -24,6 +24,8 @@ namespace ejdi::ast {
     struct FunctionCall;
     struct WhileLoop;
     struct IfThenElse;
+    struct StringLiteral;
+    struct NumberLiteral;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
@@ -35,7 +37,9 @@ namespace ejdi::ast {
         Rc<UnaryOp>,
         Rc<FunctionCall>,
         Rc<WhileLoop>,
-        Rc<IfThenElse>
+        Rc<IfThenElse>,
+        Rc<StringLiteral>,
+        Rc<NumberLiteral>
     >;
 
 
@@ -119,6 +123,18 @@ namespace ejdi::ast {
         Expr condition;
         Rc<Block> then;
         std::optional<std::tuple<lexer::Word, Expr>> else_;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct NumberLiteral {
+        lexer::NumberLit literal;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct StringLiteral {
+        lexer::StringLit literal;
 
         std::string debug(std::size_t depth = 0) const;
     };

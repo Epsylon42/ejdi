@@ -155,3 +155,11 @@ string ast::IfThenElse::debug(size_t depth) const {
 
     return res;
 }
+
+string ast::NumberLiteral::debug(size_t depth) const {
+    return offset(depth) + "lit(" + to_string(literal.value()) + ")";
+}
+
+string ast::StringLiteral::debug(size_t depth) const {
+    return offset(depth) + "lit(\"" + literal.value() + "\")";
+}

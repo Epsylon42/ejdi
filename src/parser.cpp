@@ -61,6 +61,18 @@ unique_ptr<ParserError> ParseStream::expected(string expected) const {
 ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
     auto stream = in.clone();
 
+    auto num = DO(parse<Rc<NumberLiteral>>(stream));
+    if (num.has_result()) {
+        in = stream;
+        return Expr(move(num.get()));
+    }
+
+    auto str = DO(parse<Rc<StringLiteral>>(stream));
+    if (str.has_result()) {
+        in = stream;
+        return Expr(move(str.get()));
+    }
+
     auto block = DO(parse<Rc<Block>>(stream));
     if (block.has_result()) {
         in = stream;
@@ -288,4 +300,16 @@ ParserResult<Rc<IfThenElse>> parser::parse<Rc<IfThenElse>>(ParseStream& in) {
             move(else_)
         }
     );
+}
+
+template<>
+ParserResult<Rc<NumberLiteral>> parser::parse<Rc<NumberLiteral>>(ParseStream& in) {
+    auto lit = TRY(parse<lexer::NumberLit>(in));
+    return make_shared<NumberLiteral>(NumberLiteral { lit });
+}
+
+template<>
+ParserResult<Rc<StringLiteral>> parser::parse<Rc<StringLiteral>>(ParseStream& in) {
+    auto lit = TRY(parse<lexer::StringLit>(in));
+    return make_shared<StringLiteral>(StringLiteral { lit });
 }
