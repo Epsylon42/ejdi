@@ -1,3 +1,6 @@
 {
-    print("Hello, World!");
+    let a = "test";
+    a = "Hello, World!";
+    print(a);
+    b = "abcde";
 }
