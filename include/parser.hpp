@@ -18,7 +18,6 @@ namespace ejdi::parser {
         std::vector<lexer::groups::LexemTree>::iterator end;
 
     private:
-        // nullable
         lexer::groups::Group* parent = nullptr;
     public:
 

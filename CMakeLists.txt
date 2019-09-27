@@ -30,8 +30,11 @@ SOURCES
 	src/main.cpp
 	src/lexer.cpp
 	src/parser.cpp
+	src/exec.cpp
+	src/context.cpp
 	src/linemap.cpp
 	src/span.cpp
+	src/value.cpp
 	src/ast.cpp
 )
 

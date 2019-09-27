@@ -1,22 +1,3 @@
 {
-    let hello = "world";
-    let a = 5;
-    let b = 4.13;
-
-    c = a + b * { a * 8 };
-
-    hello("world");
-    hello(world());
-
-    if true { 
-        print("true");
-    } else if abc {
-        print("abc");
-    } else {
-        print("abc");
-    };
-
-    while true {
-        print ("while");
-    }
+    print("Hello, World!");
 }
