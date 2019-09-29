@@ -1,8 +1,10 @@
 #include <cassert>
 
 #include <exec/value.hpp>
+#include <exec/context.hpp>
 
 using namespace std;
+using namespace ejdi::exec::context;
 
 namespace ejdi::exec::value {
     Object::Object(shared_ptr<Object> prototype)
@@ -68,11 +70,31 @@ namespace ejdi::exec::value {
         return make_shared<Function>(unique_ptr<IFunction>(new NativeFunction(move(func))));
     }
 
-    Value Function::call(vector<Value> args) {
-        return func->call(move(args));
+    Value Function::call(const Context& ctx, vector<Value> args) {
+        return func->call(ctx, move(args));
     }
 
-    Value NativeFunction::call(vector<Value> args) {
-        return func(move(args));
+    Value NativeFunction::call(const Context& ctx, vector<Value> args) {
+        return func(ctx, move(args));
+    }
+
+    Object& get_vtable(const Context& ctx, Value& val) {
+#define VTABLE(table) (*ctx.global.core->get(table).as<Object>())
+
+        if (val.is<Unit>()) {
+            return VTABLE("unit");
+        } else if (val.is<float>()) {
+            return VTABLE("number");
+        } else if (val.is<bool>()) {
+            return VTABLE("boolean");
+        } else if (val.is<string>()) {
+            return VTABLE("string");
+        } else if (val.is<Function>()) {
+            return VTABLE("function");
+        } else {
+            return *val.as<Object>();
+        }
+
+#undef VTABLE
     }
 }

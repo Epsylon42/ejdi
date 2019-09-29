@@ -1,6 +1,5 @@
 {
     let a = "test";
     a = "Hello, World!";
-    print(a);
-    b = "abcde";
+    print(a, "\n", 15, "\n");
 }
