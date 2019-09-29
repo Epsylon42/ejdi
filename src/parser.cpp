@@ -73,6 +73,12 @@ ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
         return Expr(move(str.get()));
     }
 
+    auto boolean = DO(parse<Rc<BoolLiteral>>(stream));
+    if (boolean.has_result()) {
+        in = stream;
+        return Expr(move(boolean.get()));
+    }
+
     auto block = DO(parse<Rc<Block>>(stream));
     if (block.has_result()) {
         in = stream;
@@ -119,24 +125,58 @@ ParserResult<Expr> parser::parse_unary_expr(ParseStream& in) {
         }
     }
 
+    auto access = TRY(parse_access_expr(stream));
+
+    while (!ops.empty()) {
+        access = make_shared<UnaryOp>(UnaryOp { move(ops.back()), move(access) });
+        ops.pop_back();
+    }
+
+    in = stream;
+
+    return access;
+}
+
+ParserResult<Expr> parser::parse_access_expr(ParseStream& in) {
+    auto stream = in.clone();
+
     auto primary = TRY(parse_primary_expr(stream));
 
     while (true) {
-        auto args = DO(parse_list<Expr>(stream, "()"));
-        if (args.has_result()) {
-            primary = Expr(
-                make_shared<FunctionCall>(
-                    FunctionCall { move(primary), move(args.get()) }
-                )
-            );
-        } else {
-            break;
-        }
-    }
+        if (stream.peek(".")) {
+            auto dot = TRY(parse<lexer::Punct>(stream, "."));
+            auto field = TRY_CRITICAL(parse<lexer::Word>(stream));
 
-    while (!ops.empty()) {
-        primary = Expr(make_shared<UnaryOp>(UnaryOp { move(ops.back()), move(primary) }));
-        ops.pop_back();
+            auto args = DO(parse_list<Expr>(stream, "()"));
+
+            if (args.has_result()) {
+                primary = make_shared<MethodCall>(
+                    MethodCall {
+                        move(primary),
+                        dot,
+                        field,
+                        move(args.get())
+                    });
+            } else {
+                primary = make_shared<FieldAccess>(
+                    FieldAccess {
+                        move(primary),
+                        dot,
+                        field
+                    });
+            }
+        } else {
+            auto args = DO(parse_list<Expr>(stream, "()"));
+            if (args.has_result()) {
+                primary = make_shared<FunctionCall>(
+                    FunctionCall {
+                        move(primary),
+                        move(args.get())
+                    });
+            } else {
+                break;
+            }
+        }
     }
 
     in = stream;
@@ -176,7 +216,23 @@ ParserResult<Rc<Assignment>> parser::parse<Rc<Assignment>>(ParseStream& in) {
     auto stream = in.clone();
 
     auto let = try_parse<Word>(stream, "let");
-    auto variable = TRY(parse<Word>(stream));
+
+    optional<Expr> base;
+    optional<Word> field;
+
+    auto dest_stream = stream.clone();
+    auto destination = TRY(parse_access_expr(dest_stream));
+    if (ast_is<Variable>(destination)) {
+        field = ast_get<Variable>(destination)->variable;
+    } else if (ast_is<FieldAccess>(destination)) {
+        auto access = ast_get<FieldAccess>(destination);
+        base = move(access->base);
+        field = access->field;
+    } else {
+        return stream.expected("valid lvalue expression");
+    }
+    stream = dest_stream;
+
     auto assignment = TRY(parse<Punct>(stream, "="));
     auto expr = TRY_CRITICAL(parse<Expr>(stream));
     auto semi = TRY_CRITICAL(parse<Punct>(stream, ";"));
@@ -185,7 +241,8 @@ ParserResult<Rc<Assignment>> parser::parse<Rc<Assignment>>(ParseStream& in) {
 
     return make_shared<Assignment>(Assignment {
         let,
-        variable,
+        move(base),
+        *field,
         assignment,
         move(expr),
         semi
@@ -315,4 +372,15 @@ template<>
 ParserResult<Rc<StringLiteral>> parser::parse<Rc<StringLiteral>>(ParseStream& in) {
     auto lit = TRY(parse<lexer::StringLit>(in));
     return make_shared<StringLiteral>(StringLiteral { lit });
+}
+
+template<>
+ParserResult<Rc<BoolLiteral>> parser::parse<Rc<BoolLiteral>>(ParseStream& in) {
+    if (in.peek("true")) {
+        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse<Word>(in, "true")), true });
+    } else if (in.peek("false")) {
+        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse<Word>(in, "false")), false });
+    } else {
+        return in.expected("boolean literal");
+    }
 }

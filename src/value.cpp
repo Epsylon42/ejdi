@@ -1,4 +1,5 @@
 #include <cassert>
+#include <iostream>
 
 #include <exec/value.hpp>
 #include <exec/context.hpp>
@@ -40,6 +41,7 @@ namespace ejdi::exec::value {
         if (ptr != nullptr) {
             return *ptr;
         } else {
+            cerr << name << endl;
             assert("field not found" && 0);
         }
     }

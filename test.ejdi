@@ -1,5 +1,5 @@
 {
-    let a = "test";
-    a = "Hello, World!";
-    print(a, "\n", 15, "\n");
+    let o = obj();
+    o.greeting = "Hello, World!";
+    print(o.greeting, "\n", 15, "\n", o, "\n");
 }

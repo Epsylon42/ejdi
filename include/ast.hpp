@@ -22,10 +22,13 @@ namespace ejdi::ast {
     struct BinaryOp;
     struct UnaryOp;
     struct FunctionCall;
+    struct FieldAccess;
+    struct MethodCall;
     struct WhileLoop;
     struct IfThenElse;
     struct StringLiteral;
     struct NumberLiteral;
+    struct BoolLiteral;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
@@ -36,16 +39,20 @@ namespace ejdi::ast {
         Rc<BinaryOp>,
         Rc<UnaryOp>,
         Rc<FunctionCall>,
+        Rc<FieldAccess>,
+        Rc<MethodCall>,
         Rc<WhileLoop>,
         Rc<IfThenElse>,
         Rc<StringLiteral>,
-        Rc<NumberLiteral>
+        Rc<NumberLiteral>,
+        Rc<BoolLiteral>
     >;
 
 
     struct Assignment {
         std::optional<lexer::Word> let;
-        lexer::Word variable;
+        std::optional<Expr> base;
+        lexer::Word field;
         lexer::Punct assignment;
         Expr expr;
         lexer::Punct semi;
@@ -110,6 +117,23 @@ namespace ejdi::ast {
         std::string debug(std::size_t depth = 0) const;
     };
 
+    struct FieldAccess {
+        Expr base;
+        lexer::Punct dot;
+        lexer::Word field;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct MethodCall {
+        Expr base;
+        lexer::Punct dot;
+        lexer::Word method;
+        Rc<List<Expr>> arguments;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
     struct WhileLoop {
         lexer::Word while_;
         Expr condition;
@@ -135,6 +159,13 @@ namespace ejdi::ast {
 
     struct StringLiteral {
         lexer::StringLit literal;
+
+        std::string debug(std::size_t depth = 0) const;
+    };
+
+    struct BoolLiteral {
+        lexer::Word word;
+        bool value;
 
         std::string debug(std::size_t depth = 0) const;
     };

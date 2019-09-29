@@ -19,14 +19,21 @@ string ast::Assignment::debug(size_t depth) const {
 
     if (let.has_value()) {
         res += let->debug();
-        res += ' ';
+    }
+    res += '\n';
+
+    if (base.has_value()) {
+        res += ast_debug(*base, depth + 1);
+        res += '\n';
     }
 
-    res += ast_debug(variable);
+    res += offset(depth);
+    res += "field ";
+    res += ast_debug(field);
     res += ' ';
     res += ast_debug(assignment);
-    res += ' ';
-    res += ast_debug(expr);
+    res += '\n';
+    res += ast_debug(expr, depth + 1);
     res += ' ';
     res += ast_debug(semi);
 
@@ -120,6 +127,40 @@ string ast::FunctionCall::debug(size_t depth) const {
     return res;
 }
 
+string ast::FieldAccess::debug(size_t depth) const {
+    string res = offset(depth);
+
+    res += "field access '";
+    res += ast_debug(field);
+    res += "' on\n";
+
+    res += ast_debug(base, depth + 1);
+
+    return res;
+}
+
+string ast::MethodCall::debug(size_t depth) const {
+    string res = offset(depth);
+
+    res += "method call '";
+    res += ast_debug(method);
+    res += "' on\n";
+    res += ast_debug(base, depth + 1);
+
+    if (!arguments->list.empty()) {
+        res += '\n';
+        res += offset(depth);
+        res += "arguments";
+
+        for (const auto& arg : arguments->list) {
+            res += '\n';
+            res += ast_debug(arg, depth + 1);
+        }
+    }
+
+    return res;
+}
+
 string ast::WhileLoop::debug(size_t depth) const {
     string res = offset(depth);
 
@@ -162,4 +203,8 @@ string ast::NumberLiteral::debug(size_t depth) const {
 
 string ast::StringLiteral::debug(size_t depth) const {
     return offset(depth) + "lit(\"" + literal.value() + "\")";
+}
+
+string ast::BoolLiteral::debug(size_t depth) const {
+    return offset(depth) + "lit(" + (value ? "true" : "false") + ")";
 }

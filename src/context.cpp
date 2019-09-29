@@ -109,6 +109,16 @@ namespace ejdi::exec::context {
                 })
             );
 
+        prelude->set(
+            "obj",
+            Function::native(
+                [](const Context& ctx, vector<Value>) {
+                    auto obj = make_shared<Object>();
+                    obj->prototype = ctx.global.core->get("object").as<Object>();
+                    return obj;
+                })
+            );
+
         core->set("prelude", move(prelude));
 
         return GlobalContext { move(core), {}, {} };

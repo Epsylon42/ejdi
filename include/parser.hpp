@@ -89,6 +89,7 @@ namespace ejdi::parser {
 
     result::ParserResult<ast::Expr> parse_primary_expr(ParseStream& in);
     result::ParserResult<ast::Expr> parse_unary_expr(ParseStream& in);
+    result::ParserResult<ast::Expr> parse_access_expr(ParseStream& in);
 
     template<>
     result::ParserResult<ast::Rc<ast::Assignment>> parse<ast::Rc<ast::Assignment>>(ParseStream& in);
@@ -106,6 +107,8 @@ namespace ejdi::parser {
     result::ParserResult<ast::Rc<ast::NumberLiteral>> parse<ast::Rc<ast::NumberLiteral>>(ParseStream& in);
     template<>
     result::ParserResult<ast::Rc<ast::StringLiteral>> parse<ast::Rc<ast::StringLiteral>>(ParseStream& in);
+    template<>
+    result::ParserResult<ast::Rc<ast::BoolLiteral>> parse<ast::Rc<ast::BoolLiteral>>(ParseStream& in);
 
     template< typename T >
     result::ParserResult<ast::Rc<ast::List<T>>> parse_list(ParseStream& in, std::optional<std::string_view> parens) {
