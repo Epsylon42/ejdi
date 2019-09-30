@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 
 #include <exec/exec.hpp>
 
@@ -36,6 +37,54 @@ namespace ejdi::exec {
         }
     }
 
+    struct Comparator {
+        Value& left;
+        Value& right;
+
+        int cmp(Unit) {
+            return true;
+        }
+
+        int cmp(float) {
+            auto a = left.as<float>();
+            auto b = right.as<float>();
+            if (a < b) {
+                return -1;
+            } else if (a > b) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+        int cmp(bool) {
+            return (int)left.as<bool>() - (int)right.as<bool>();
+        }
+
+        int cmp(const shared_ptr<string>&) {
+            auto& a = left.as<string>();
+            auto& b = right.as<string>();
+
+            if (a->size() != b->size()) {
+                return false;
+            }
+
+            return strncmp(a->data(), b->data(), a->size());
+        }
+
+        int cmp(const shared_ptr<Function>&) {
+            return left.as<Function>() == right.as<Function>();
+        }
+
+        int cmp(const shared_ptr<Object>&) {
+            return left.as<Object>() == right.as<Object>();
+        }
+
+        int compare() {
+            return visit([this](const auto& x){ return this->cmp(x); }, left.value);
+        }
+    };
+
     struct Evaluator {
         const Context& ctx;
 
@@ -53,6 +102,64 @@ namespace ejdi::exec {
                 return eval(ctx, *block.ret);
             } else {
                 return Unit{};
+            }
+        }
+
+        Value ev(const BinaryOp& op) {
+            const auto& str = op.op.str;
+            auto left = eval(ctx, op.left);
+            auto right = eval(ctx, op.right);
+
+            if (str == "+") {
+                return left.as<float>() + right.as<float>();
+            } else if (str == "-") {
+                return left.as<float>() - right.as<float>();
+            } else if (str == "*") {
+                return left.as<float>() - right.as<float>();
+            } else if (str == "/") {
+                return left.as<float>() / right.as<float>();
+            } else if (str == "%") {
+                return (float)((long)left.as<float>() % (long)right.as<float>());
+            } else if (str == "~") {
+                auto& ptr = left.as<string>();
+                if (ptr.unique()) {
+                    *ptr += *right.as<string>();
+                    return left;
+                } else {
+                    auto res = make_shared<string>(*left.as<string>());
+                    *res += *right.as<string>();
+                    return res;
+                }
+            } else if (str == "&&") {
+                return left.as<bool>() && right.as<bool>();
+            } else if (str == "||") {
+                return left.as<bool>() || right.as<bool>();
+            } else if (str == "==") {
+                return Comparator{ left, right }.compare() == 0;
+            } else if (str == "!=") {
+                return Comparator{ left, right }.compare() != 0;
+            } else if (str == "<") {
+                return Comparator{ left, right }.compare() < 0;
+            } else if (str == ">") {
+                return Comparator{ left, right }.compare() > 0;
+            } else if (str == "<=") {
+                return Comparator{ left, right }.compare() <= 0;
+            } else if (str == ">=") {
+                return Comparator{ left, right }.compare() >= 0;
+            } else {
+                assert("invalid binary operator" && 0);
+            }
+        }
+
+        Value ev(const UnaryOp& op) {
+            if (op.op.str == "!") {
+                return !eval(ctx, op.expr).as<bool>();
+            } else if (op.op.str == "+") {
+                return +eval(ctx, op.expr).as<float>();
+            } else if (op.op.str == "-") {
+                return -eval(ctx, op.expr).as<float>();
+            } else {
+                assert("invalid unary operator" && 0);
             }
         }
 
@@ -87,7 +194,7 @@ namespace ejdi::exec {
 
         Value ev(const WhileLoop& loop) {
             while (eval(ctx, loop.condition).as<bool>()) {
-                ev(loop.block);
+                ev(*loop.block);
             }
 
             return Unit{};
@@ -95,7 +202,7 @@ namespace ejdi::exec {
 
         Value ev(const IfThenElse& cond) {
             if (eval(ctx, cond.condition).as<bool>()) {
-                return ev(cond.then);
+                return ev(*cond.then);
             } else if (cond.else_.has_value()) {
                 return eval(ctx, get<1>(*cond.else_));
             } else {
@@ -113,11 +220,6 @@ namespace ejdi::exec {
 
         Value ev(const BoolLiteral& lit) {
             return lit.value;
-        }
-
-        template< typename T >
-        Value ev(const T&) {
-            assert("unimplemented" && 0);
         }
 
         template< typename T >

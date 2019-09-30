@@ -104,9 +104,9 @@ namespace ejdi::lexer {
 
 
     namespace actions {
-        constexpr std::array<std::string_view, 24> punctuation {
+        constexpr std::array<std::string_view, 25> punctuation {
             ",", ".", ";",
-                "==", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "~=",
+                "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "~=",
                 "=", "<", ">", "+", "-", "*", "/", "%", "~",
                 "&&", "||", "!"
         };

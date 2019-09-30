@@ -78,9 +78,9 @@ string ast::Block::debug(size_t depth) const {
 }
 
 
-string ast::ParenExpr::debug(size_t depth) const {
-    return "unimplemented";
-}
+// string ast::ParenExpr::debug(size_t depth) const {
+//     return "unimplemented";
+// }
 
 string ast::BinaryOp::debug(size_t depth) const {
     string res = offset(depth);

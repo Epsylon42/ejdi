@@ -35,7 +35,7 @@ namespace ejdi::ast {
     using Expr = std::variant<
         Rc<Variable>,
         Rc<Block>,
-        Rc<ParenExpr>,
+        // Rc<ParenExpr>,
         Rc<BinaryOp>,
         Rc<UnaryOp>,
         Rc<FunctionCall>,
@@ -82,12 +82,12 @@ namespace ejdi::ast {
         std::string debug(std::size_t depth = 0) const;
     };
 
-    struct ParenExpr {
-        lexer::groups::ParenPair parens;
-        Expr inner;
+    // struct ParenExpr {
+    //     lexer::groups::ParenPair parens;
+    //     Expr inner;
 
-        std::string debug(std::size_t depth = 0) const;
-    };
+    //     std::string debug(std::size_t depth = 0) const;
+    // };
 
     struct BinaryOp {
         lexer::Punct op;

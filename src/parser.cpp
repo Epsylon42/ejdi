@@ -186,7 +186,7 @@ ParserResult<Expr> parser::parse_access_expr(ParseStream& in) {
 
 template<>
 ParserResult<Expr> parser::parse<Expr>(ParseStream& in) {
-    const auto valid_ops = { "==", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
+    const auto valid_ops = { "==", "!=", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
 
     auto left = TRY(parse_unary_expr(in));
 
@@ -320,8 +320,8 @@ ParserResult<Rc<WhileLoop>> parser::parse<Rc<WhileLoop>>(ParseStream& in) {
     auto stream = in.clone();
 
     auto while_ = TRY(parse<Word>(stream, "while"));
-    auto cond = TRY(parse<Expr>(stream));
-    auto block = TRY(parse<Rc<Block>>(stream));
+    auto cond = TRY_CRITICAL(parse<Expr>(stream));
+    auto block = TRY_CRITICAL(parse<Rc<Block>>(stream));
 
     in = stream;
 
@@ -339,8 +339,8 @@ ParserResult<Rc<IfThenElse>> parser::parse<Rc<IfThenElse>>(ParseStream& in) {
     auto stream = in.clone();
 
     auto if_ = TRY(parse<Word>(stream, "if"));
-    auto cond = TRY(parse<Expr>(stream));
-    auto then = TRY(parse<Rc<Block>>(stream));
+    auto cond = TRY_CRITICAL(parse<Expr>(stream));
+    auto then = TRY_CRITICAL(parse<Rc<Block>>(stream));
 
     optional<tuple<Word, Expr>> else_;
     if (stream.peek("else")) {
