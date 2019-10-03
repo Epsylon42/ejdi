@@ -12,6 +12,7 @@
 
 #include <exec/exec.hpp>
 #include <exec/value.hpp>
+#include <exec/error.hpp>
 
 using namespace std;
 using namespace ejdi;
@@ -39,7 +40,13 @@ int main() {
         auto mod = ctx.new_module("test");
 
         ast::Expr expr(move(block.get()));
-        ejdi::exec::eval(mod, expr);
+        try {
+            ejdi::exec::eval(mod, expr);
+        } catch (error::RuntimeError& e) {
+            auto pos = linemap.span_to_pos_pair(e.root_span).first;
+            cerr << "RUNTIME ERROR at " << pos.line+1 << ':' << pos.column << endl;
+            cerr << "  " << e.root_error << endl;
+        }
     } else {
         auto& error = block.error();
         auto pos = linemap.span_to_pos_pair(error.span).first;

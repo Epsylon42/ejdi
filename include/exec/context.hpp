@@ -3,11 +3,12 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
-#include <stack>
+#include <vector>
 #include <tuple>
 
 #include <span.hpp>
 #include <exec/value.hpp>
+#include <exec/error.hpp>
 
 namespace ejdi::exec::context {
     struct GlobalContext;
@@ -15,12 +16,14 @@ namespace ejdi::exec::context {
     struct Context {
         GlobalContext& global;
         std::shared_ptr<value::Object> scope;
+
+        error::RuntimeError error(std::string message, span::Span span = span::Span::empty()) const;
     };
 
     struct GlobalContext {
         std::shared_ptr<value::Object> core;
         std::unordered_map<std::string, value::Value> modules;
-        std::stack<std::tuple<std::string, span::Span>> stack_trace;
+        std::vector<std::tuple<std::string, span::Span>> stack_trace;
 
         static GlobalContext with_core();
 

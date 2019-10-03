@@ -1,8 +1,10 @@
 #include <ast.hpp>
+#include <span.hpp>
 
 using namespace std;
 using namespace ejdi;
 using namespace ejdi::ast;
+using namespace ejdi::span;
 
 static string offset(size_t depth) {
     string res;
@@ -40,6 +42,16 @@ string ast::Assignment::debug(size_t depth) const {
     return res;
 }
 
+Span ast::Assignment::span() const {
+    auto res = Span::empty();
+    if (let.has_value()) {
+        res = let->span;
+    } else if (base.has_value()) {
+        res = ast_span(*base);
+    }
+    return res.join(field.span).join(semi.span);
+}
+
 
 string ast::ExprStmt::debug(size_t depth) const {
     string res = ast_debug(expr, depth);
@@ -49,6 +61,10 @@ string ast::ExprStmt::debug(size_t depth) const {
     return res;
 }
 
+Span ast::ExprStmt::span() const {
+    return ast_span(expr).join(semi.span);
+}
+
 
 string ast::Variable::debug(size_t depth) const {
     string res = offset(depth);
@@ -56,6 +72,10 @@ string ast::Variable::debug(size_t depth) const {
     res += "var(" + ast_debug(variable) + ")";
 
     return res;
+}
+
+Span ast::Variable::span() const {
+    return variable.span;
 }
 
 
@@ -77,6 +97,21 @@ string ast::Block::debug(size_t depth) const {
     return res;
 }
 
+Span ast::Block::span() const {
+    if (parens.has_value()) {
+        return parens->span;
+    }
+    auto res = Span::empty();
+    if (!statements.empty()) {
+        res = ast_span(statements.front()).join(ast_span(statements.back()));
+    }
+    if (ret.has_value()) {
+        return res.join(ast_span(*ret));
+    } else {
+        return res;
+    }
+}
+
 
 // string ast::ParenExpr::debug(size_t depth) const {
 //     return "unimplemented";
@@ -96,6 +131,11 @@ string ast::BinaryOp::debug(size_t depth) const {
     return res;
 }
 
+Span ast::BinaryOp::span() const {
+    return ast_span(left).join(ast_span(right));
+}
+
+
 string ast::UnaryOp::debug(size_t depth) const {
     string res = offset(depth);
 
@@ -106,6 +146,11 @@ string ast::UnaryOp::debug(size_t depth) const {
 
     return res;
 }
+
+Span ast::UnaryOp::span() const {
+    return op.span.join(ast_span(expr));
+}
+
 
 string ast::FunctionCall::debug(size_t depth) const {
     string res = offset(depth);
@@ -127,6 +172,11 @@ string ast::FunctionCall::debug(size_t depth) const {
     return res;
 }
 
+Span ast::FunctionCall::span() const {
+    return ast_span(function).join(arguments->span());
+}
+
+
 string ast::FieldAccess::debug(size_t depth) const {
     string res = offset(depth);
 
@@ -138,6 +188,11 @@ string ast::FieldAccess::debug(size_t depth) const {
 
     return res;
 }
+
+Span ast::FieldAccess::span() const {
+    return ast_span(base).join(field.span);
+}
+
 
 string ast::MethodCall::debug(size_t depth) const {
     string res = offset(depth);
@@ -161,6 +216,11 @@ string ast::MethodCall::debug(size_t depth) const {
     return res;
 }
 
+Span ast::MethodCall::span() const {
+    return ast_span(base).join(arguments->span());
+}
+
+
 string ast::WhileLoop::debug(size_t depth) const {
     string res = offset(depth);
 
@@ -174,6 +234,11 @@ string ast::WhileLoop::debug(size_t depth) const {
 
     return res;
 }
+
+Span ast::WhileLoop::span() const {
+    return while_.span.join(block->span());
+}
+
 
 string ast::IfThenElse::debug(size_t depth) const {
     string res = offset(depth);
@@ -197,14 +262,50 @@ string ast::IfThenElse::debug(size_t depth) const {
     return res;
 }
 
+Span ast::IfThenElse::span() const {
+    Span ret = if_.span.join(then->span());
+    if (else_.has_value()) {
+        return ret.join(ast_span(std::get<1>(*else_)));
+    } else {
+        return ret;
+    }
+}
+
+
 string ast::NumberLiteral::debug(size_t depth) const {
     return offset(depth) + "lit(" + to_string(literal.value()) + ")";
 }
+
+Span ast::NumberLiteral::span() const {
+    return literal.span;
+}
+
 
 string ast::StringLiteral::debug(size_t depth) const {
     return offset(depth) + "lit(\"" + literal.value() + "\")";
 }
 
+Span ast::StringLiteral::span() const {
+    return literal.span;
+}
+
+
 string ast::BoolLiteral::debug(size_t depth) const {
     return offset(depth) + "lit(" + (value ? "true" : "false") + ")";
+}
+
+Span ast::BoolLiteral::span() const {
+    return word.span;
+}
+
+
+template< typename T >
+Span ast::List<T>::span() const {
+    if (parens.has_value()) {
+        return parens->span;
+    } else if (!list.empty()) {
+        return ast_span(list.front()).join(ast_span(list.back()));
+    } else {
+        return Span::empty();
+    }
 }

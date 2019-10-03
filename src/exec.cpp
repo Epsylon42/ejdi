@@ -2,38 +2,51 @@
 #include <cstring>
 
 #include <exec/exec.hpp>
+#include <exec/error.hpp>
 
 using namespace std;
 using namespace ejdi::ast;
 using namespace ejdi::exec::value;
 using namespace ejdi::exec::context;
+using namespace ejdi::exec::error;
 
 namespace ejdi::exec {
-    void exec(const Context& ctx, const Stmt& stmt) {
-        if (ast_is<Assignment>(stmt)) {
-            auto assign = ast_get<Assignment>(stmt);
+    void exec(Context& ctx, const Stmt& stmt) {
+        try {
+            if (ast_is<Assignment>(stmt)) {
+                auto assign = ast_get<Assignment>(stmt);
 
-            if (assign->let.has_value() && !assign->base.has_value()) {
-                if (ctx.scope->try_get_no_prototype(assign->field.str) == nullptr) {
-                    ctx.scope->set_no_prototype(assign->field.str, eval(ctx, assign->expr));
+                if (assign->let.has_value() && !assign->base.has_value()) {
+                    if (ctx.scope->try_get_no_prototype(assign->field.str) == nullptr) {
+                        ctx.scope->set_no_prototype(assign->field.str, eval(ctx, assign->expr));
+                    } else {
+                        string msg = "variable with name '";
+                        msg += assign->field.str;
+                        msg += "' already exists in this scope";
+                        throw ctx.error(move(msg), assign->field.span);
+                    }
+                } else if (assign->base.has_value()) {
+                    auto base = eval(ctx, *assign->base);
+                    base.as<Object>()->set(assign->field.str, eval(ctx, assign->expr));
                 } else {
-                    assert("variable with the same name already exists in this scope" && 0);
-                }
-            } else if (assign->base.has_value()) {
-                auto base = eval(ctx, *assign->base);
-                base.as<Object>()->set(assign->field.str, eval(ctx, assign->expr));
-            } else {
-                auto var = ctx.scope->try_get(assign->field.str);
-                if (var == nullptr) {
-                    assert("variable does not exist" && 0);
-                }
+                    auto var = ctx.scope->try_get(assign->field.str);
+                    if (var == nullptr) {
+                        string msg = "variable '";
+                        msg += assign->field.str;
+                        msg += "' does not exist";
+                        throw ctx.error(move(msg), assign->field.span);
+                    }
 
-                *var = eval(ctx, assign->expr);
+                    *var = eval(ctx, assign->expr);
+                }
+            } else if (ast_is<ExprStmt>(stmt)) {
+                eval(ctx, ast_get<ExprStmt>(stmt)->expr);
+            } else {
+                assert("invalid statement value" && 0);
             }
-        } else if (ast_is<ExprStmt>(stmt)) {
-            eval(ctx, ast_get<ExprStmt>(stmt)->expr);
-        } else {
-            assert("invalid statement value" && 0);
+        } catch (RuntimeError& e) {
+            e.set_span_once(ast_span(stmt));
+            throw;
         }
     }
 
@@ -86,7 +99,7 @@ namespace ejdi::exec {
     };
 
     struct Evaluator {
-        const Context& ctx;
+        Context& ctx;
 
 
         Value ev(const Variable& var) {
@@ -224,11 +237,16 @@ namespace ejdi::exec {
 
         template< typename T >
         Value operator() (const shared_ptr<T>& expr) {
-            return ev(*expr);
+            try {
+                return ev(*expr);
+            } catch (RuntimeError& e) {
+                e.set_span_once(expr->span());
+                throw;
+            }
         }
     };
 
-    Value eval(const Context& ctx, const Expr& expr) {
+    Value eval(Context& ctx, const Expr& expr) {
         return std::visit(Evaluator{ ctx }, expr);
     }
 }

@@ -1,4 +1,3 @@
-#include <cassert>
 #include <iostream>
 #include <cmath>
 
@@ -8,8 +7,9 @@ using namespace std;
 using namespace ejdi::span;
 using namespace ejdi::exec::value;
 using namespace ejdi::exec::context;
+using namespace ejdi::exec::error;
 
-using Ctx = const Context&;
+using Ctx = Context&;
 
 
 static Value unit() {
@@ -108,7 +108,11 @@ static Value string_() {
     obj->set("ord",
              Function::native_expanded<string>(
                  [](Ctx, auto val) {
-                     return float(int(val->at(0)));
+                     if (!val->empty()) {
+                         return float(int(val->at(0)));
+                     } else {
+                         return 0.0f;
+                     }
                  })
         );
     obj->set("len",
@@ -119,15 +123,24 @@ static Value string_() {
         );
     obj->set("at",
              Function::native_expanded<string, float>(
-                 [](Ctx, auto str, size_t index) {
+                 [](Ctx ctx, auto str, size_t index) {
                      string res;
-                     res += (str->at(index));
-                     return res;
+                     if (str->length() > index) {
+                         res += (str->at(index));
+                         return res;
+                     } else {
+                         throw ctx.error("string index out of range");
+                     }
                  })
         );
     obj->set("slice",
              Function::native_expanded<string, float, float>(
-                 [](Ctx, auto str, size_t start, size_t end) {
+                 [](Ctx ctx, auto str, size_t start, size_t end) {
+                     if (start > end) {
+                         throw ctx.error("start index is higher than end index");
+                     } else if (str->length() <= start || str->length() < end) {
+                         throw ctx.error("string index out of range");
+                     }
                      return str->substr(start, end);
                  })
         );
@@ -161,6 +174,10 @@ static Value object() {
 
 
 namespace ejdi::exec::context {
+    RuntimeError Context::error(string message, Span span) const {
+        return RuntimeError { move(message), span, global.stack_trace };
+    }
+
     GlobalContext GlobalContext::with_core() {
         auto core = make_shared<Object>();
         core->set("unit", unit());
@@ -211,11 +228,11 @@ namespace ejdi::exec::context {
     }
 
     void GlobalContext::call(string name, Span span) {
-        stack_trace.push(make_tuple(move(name), span));
+        stack_trace.push_back(make_tuple(move(name), span));
     }
 
     void GlobalContext::ret() {
-        stack_trace.pop();
+        stack_trace.pop_back();
     }
 
     Context GlobalContext::new_module(string name) {

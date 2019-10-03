@@ -14,6 +14,12 @@ Span Span::join(Span other) const {
     if (file != other.file) {
         throw SpanError();
     }
+    if (is_empty) {
+        return other;
+    }
+    if (other.is_empty) {
+        return *this;
+    }
 
     return Span(
         std::move(other.file),

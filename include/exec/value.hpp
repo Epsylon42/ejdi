@@ -8,6 +8,8 @@
 #include <vector>
 #include <memory>
 
+#include <exec/error.hpp>
+
 namespace ejdi::exec::context {
     struct Context;
 }
@@ -22,43 +24,54 @@ namespace ejdi::exec::value {
     using ValueVariant = std::variant<Unit, float, bool, std::shared_ptr<std::string>, std::shared_ptr<Function>, std::shared_ptr<Object>>;
 
     template< typename T >
-    auto& __as_impl(ValueVariant& val) {
-        return std::get<T>(val);
-    }
-
+    struct _WrappedRc {
+        using TYPE = T;
+    };
     template<>
-    inline auto& __as_impl<std::string>(ValueVariant& val) {
-        return std::get<std::shared_ptr<std::string>>(val);
-    }
-
+    struct _WrappedRc<std::string> {
+        using TYPE = std::shared_ptr<std::string>;
+    };
     template<>
-    inline auto& __as_impl<Function>(ValueVariant& val) {
-        return std::get<std::shared_ptr<Function>>(val);
-    }
-
+    struct _WrappedRc<Function> {
+        using TYPE = std::shared_ptr<Function>;
+    };
     template<>
-    inline auto& __as_impl<Object>(ValueVariant& val) {
-        return std::get<std::shared_ptr<Object>>(val);
-    }
-
+    struct _WrappedRc<Object> {
+        using TYPE = std::shared_ptr<Object>;
+    };
     template< typename T >
-    bool __is_impl(ValueVariant& val) {
-        return std::holds_alternative<T>(val);
-    }
+    using WrappedRc = _WrappedRc<T>::TYPE;
 
-    template<>
-    inline bool __is_impl<std::string>(ValueVariant& val) {
-        return std::holds_alternative<std::shared_ptr<std::string>>(val);
+    inline std::string_view __type_name(Unit*) {
+        return "unit";
     }
-
-    template<>
-    inline bool __is_impl<Function>(ValueVariant& val) {
-        return std::holds_alternative<std::shared_ptr<Function>>(val);
+    inline std::string_view __type_name(float*) {
+        return "number";
     }
-
-    template<>
-    inline bool __is_impl<Object>(ValueVariant& val) {
-        return std::holds_alternative<std::shared_ptr<Object>>(val);
+    inline std::string_view __type_name(bool*) {
+        return "boolean";
+    }
+    inline std::string_view __type_name(std::string*) {
+        return "string";
+    }
+    inline std::string_view __type_name(Function*) {
+        return "function";
+    }
+    inline std::string_view __type_name(Object*) {
+        return "object";
+    }
+    inline std::string_view __type_name(std::shared_ptr<std::string>*) {
+        return "string";
+    }
+    inline std::string_view __type_name(std::shared_ptr<Function>*) {
+        return "function";
+    }
+    inline std::string_view __type_name(std::shared_ptr<Object>*) {
+        return "object";
+    }
+    template< typename T >
+    inline std::string_view type_name() {
+        return __type_name(static_cast<T*>(nullptr));
     }
 
     struct Value {
@@ -79,14 +92,23 @@ namespace ejdi::exec::value {
         Value(std::shared_ptr<Object> val) : value(std::move(val)) {}
 
         template< typename T >
-        decltype(auto) as() {
-            return __as_impl<T>(this->value);
+        bool is() {
+            return std::holds_alternative<WrappedRc<T>>(this->value);
         }
 
         template< typename T >
-        bool is() {
-            return __is_impl<T>(this->value);
+        auto& as() {
+            if (is<T>()) {
+                return std::get<WrappedRc<T>>(this->value);
+            } else {
+                std::string msg = "wrong type: expected ";
+                msg += type_name<T>();
+                msg += ", got ";
+                msg += std::visit([](auto& arg){ return __type_name(&arg); }, value);
+                throw error::RuntimeError { std::move(msg) };
+            }
         }
+
     };
 
     struct Object {
@@ -105,7 +127,7 @@ namespace ejdi::exec::value {
     };
 
 
-    Object& get_vtable(const context::Context& ctx, Value& val);
+    Object& get_vtable(context::Context& ctx, Value& val);
 
 
     struct IFunction;
@@ -127,9 +149,13 @@ namespace ejdi::exec::value {
 
         template< typename... Args, typename F >
         static Value native_expanded(F func) {
-            auto wrapper = [func{std::move(func)}](const context::Context& ctx, std::vector<Value> args) {
+            auto wrapper = [func{std::move(func)}](context::Context& ctx, std::vector<Value> args) {
                 if (args.size() < sizeof...(Args)) {
-                    assert("not enough arguments" && 0);
+                    std::string msg = "not enough arguments: needs at least ";
+                    msg += std::to_string(sizeof...(Args));
+                    msg += ", got ";
+                    msg += std::to_string(args.size());
+                    throw error::RuntimeError { std::move(msg) };
                 }
 
                 auto seq = std::index_sequence_for<Args...>();
@@ -141,20 +167,20 @@ namespace ejdi::exec::value {
             return native(std::move(wrapper));
         }
 
-        Value call(const context::Context& ctx, std::vector<Value> args);
+        Value call(context::Context& ctx, std::vector<Value> args);
     };
 
 
     struct IFunction {
-        virtual Value call(const context::Context& ctx, std::vector<Value> args) = 0;
+        virtual Value call(context::Context& ctx, std::vector<Value> args) = 0;
     };
 
     struct NativeFunction : IFunction {
-        std::function< Value(const context::Context&, std::vector<Value>) > func;
+        std::function< Value(context::Context&, std::vector<Value>) > func;
 
         template< typename F >
         NativeFunction(F func) : func(std::move(func)) {}
 
-        Value call(const context::Context& ctx, std::vector<Value> args) override;
+        Value call(context::Context& ctx, std::vector<Value> args) override;
     };
 }

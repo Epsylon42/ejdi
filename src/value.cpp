@@ -72,15 +72,15 @@ namespace ejdi::exec::value {
         return make_shared<Function>(unique_ptr<IFunction>(new NativeFunction(move(func))));
     }
 
-    Value Function::call(const Context& ctx, vector<Value> args) {
+    Value Function::call(Context& ctx, vector<Value> args) {
         return func->call(ctx, move(args));
     }
 
-    Value NativeFunction::call(const Context& ctx, vector<Value> args) {
+    Value NativeFunction::call(Context& ctx, vector<Value> args) {
         return func(ctx, move(args));
     }
 
-    Object& get_vtable(const Context& ctx, Value& val) {
+    Object& get_vtable(Context& ctx, Value& val) {
 #define VTABLE(table) (*ctx.global.core->get(table).as<Object>())
 
         if (val.is<Unit>()) {

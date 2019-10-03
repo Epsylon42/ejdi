@@ -5,6 +5,6 @@
 #include <ast.hpp>
 
 namespace ejdi::exec {
-    void exec(const context::Context& ctx, const ast::Stmt& stmt);
-    value::Value eval(const context::Context& ctx, const ast::Expr& expr);
+    void exec(context::Context& ctx, const ast::Stmt& stmt);
+    value::Value eval(context::Context& ctx, const ast::Expr& expr);
 }

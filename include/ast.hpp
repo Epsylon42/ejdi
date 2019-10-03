@@ -58,6 +58,7 @@ namespace ejdi::ast {
         lexer::Punct semi;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct ExprStmt {
@@ -65,6 +66,7 @@ namespace ejdi::ast {
         lexer::Punct semi;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
 
@@ -72,6 +74,7 @@ namespace ejdi::ast {
         lexer::Word variable;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct Block {
@@ -80,6 +83,7 @@ namespace ejdi::ast {
         std::optional<Expr> ret;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     // struct ParenExpr {
@@ -95,6 +99,7 @@ namespace ejdi::ast {
         Expr right;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct UnaryOp {
@@ -102,12 +107,15 @@ namespace ejdi::ast {
         Expr expr;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     template< typename T >
     struct List {
         std::optional<lexer::groups::ParenPair> parens;
         std::vector<T> list;
+
+        span::Span span() const;
     };
 
     struct FunctionCall {
@@ -115,6 +123,7 @@ namespace ejdi::ast {
         Rc<List<Expr>> arguments;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct FieldAccess {
@@ -123,6 +132,7 @@ namespace ejdi::ast {
         lexer::Word field;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct MethodCall {
@@ -132,6 +142,7 @@ namespace ejdi::ast {
         Rc<List<Expr>> arguments;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct WhileLoop {
@@ -140,6 +151,7 @@ namespace ejdi::ast {
         Rc<Block> block;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct IfThenElse {
@@ -149,18 +161,21 @@ namespace ejdi::ast {
         std::optional<std::tuple<lexer::Word, Expr>> else_;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct NumberLiteral {
         lexer::NumberLit literal;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct StringLiteral {
         lexer::StringLit literal;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
     struct BoolLiteral {
@@ -168,6 +183,7 @@ namespace ejdi::ast {
         bool value;
 
         std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
     };
 
 
@@ -179,6 +195,11 @@ namespace ejdi::ast {
     template< typename T, typename U >
     Rc<T> ast_get(U&& ast) {
         return std::get<Rc<T>>(ast);
+    }
+
+    template< typename T >
+    span::Span ast_span(const T& ast) {
+        return std::visit([](const auto& ast){ return ast->span(); }, ast);
     }
 
 
