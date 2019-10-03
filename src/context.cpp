@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <cmath>
 
 #include <exec/context.hpp>
 
@@ -28,8 +29,47 @@ static Value number() {
     obj->set("to_s",
              Function::native_expanded<float>(
                 [](Ctx, float val) {
-                    return to_string(val);
+                    auto str = to_string(val);
+                    if (str.find('.') != string::npos) {
+                        while (str.back() == '0' || str.back() == '.') {
+                            str.pop_back();
+                        }
+                    }
+
+                    return str;
                 })
+        );
+    obj->set("ceil",
+             Function::native_expanded<float>(
+                 [](Ctx, float val) {
+                     return ceil(val);
+                 })
+        );
+    obj->set("floor",
+             Function::native_expanded<float>(
+                 [](Ctx, float val) {
+                     return floor(val);
+                 })
+        );
+    obj->set("round",
+             Function::native_expanded<float>(
+                 [](Ctx, float val) {
+                     return round(val);
+                 })
+        );
+    obj->set("pow",
+             Function::native_expanded<float, float>(
+                 [](Ctx, float val, float power) {
+                     return pow(val, power);
+                 })
+        );
+    obj->set("chr",
+             Function::native_expanded<float>(
+                 [](Ctx, float val) {
+                     string ret;
+                     ret += char(val);
+                     return ret;
+                 })
         );
 
     return obj;
@@ -54,6 +94,22 @@ static Value string_() {
                 [](Ctx, auto val) {
                     return string(*val);
                 })
+        );
+    obj->set("to_n",
+             Function::native_expanded<string>(
+                 [](Ctx, auto val) -> Value {
+                     try {
+                         return stof(*val);
+                     } catch (...) {
+                         return Unit{};
+                     }
+                 })
+        );
+    obj->set("ord",
+             Function::native_expanded<string>(
+                 [](Ctx, auto val) {
+                     return float(int(val->at(0)));
+                 })
         );
     obj->set("len",
              Function::native_expanded<string>(

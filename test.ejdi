@@ -1,5 +1,6 @@
 {
     let line = readline();
+    print(line.ord(), "\n");
     let i = 0;
     let break = false;
     while {i < line.len()} && !break {
