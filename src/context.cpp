@@ -14,8 +14,8 @@ using Ctx = const Context&;
 static Value unit() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
+             Function::native_expanded(
+                [](Ctx) {
                     return string("()");
                 })
         );
@@ -26,9 +26,9 @@ static Value unit() {
 static Value number() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
-                    return to_string(val.at(0).as<float>());
+             Function::native_expanded<float>(
+                [](Ctx, float val) {
+                    return to_string(val);
                 })
         );
 
@@ -38,9 +38,9 @@ static Value number() {
 static Value boolean() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
-                    return val.at(0).as<bool>() ? string("true") : string("false");
+             Function::native_expanded<bool>(
+                [](Ctx, bool val) {
+                    return val ? string("true") : string("false");
                 })
         );
 
@@ -50,10 +50,30 @@ static Value boolean() {
 static Value string_() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
-                    return val.at(0);
+             Function::native_expanded<string>(
+                [](Ctx, auto val) {
+                    return string(*val);
                 })
+        );
+    obj->set("len",
+             Function::native_expanded<string>(
+                 [](Ctx, auto val) {
+                     return (float)val->length();
+                 })
+        );
+    obj->set("at",
+             Function::native_expanded<string, float>(
+                 [](Ctx, auto str, size_t index) {
+                     string res;
+                     res += (str->at(index));
+                     return res;
+                 })
+        );
+    obj->set("slice",
+             Function::native_expanded<string, float, float>(
+                 [](Ctx, auto str, size_t start, size_t end) {
+                     return str->substr(start, end);
+                 })
         );
 
     return obj;
@@ -62,8 +82,8 @@ static Value string_() {
 static Value function_() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
+            Function::native_expanded(
+                [](Ctx) {
                     return string("[function]");
                 })
         );
@@ -74,8 +94,8 @@ static Value function_() {
 static Value object() {
     auto obj = make_shared<Object>();
     obj->set("to_s",
-            Function::native(
-                [](Ctx, vector<Value> val) {
+            Function::native_expanded(
+                [](Ctx) {
                     return string("[object]");
                 })
         );
@@ -98,7 +118,7 @@ namespace ejdi::exec::context {
         prelude->set(
             "print",
             Function::native(
-                [](const Context& ctx, vector<Value> args) {
+                [](Ctx ctx, vector<Value> args) {
                     for (auto& val : args) {
                         auto str = get_vtable(ctx, val).get("to_s").as<Function>()->call(ctx, {val});
                         cout << *str.as<string>();
@@ -110,9 +130,19 @@ namespace ejdi::exec::context {
             );
 
         prelude->set(
+            "readline",
+            Function::native_expanded(
+                [](Ctx) {
+                    string ret;
+                    getline(cin, ret);
+                    return ret;
+                })
+            );
+
+        prelude->set(
             "obj",
-            Function::native(
-                [](const Context& ctx, vector<Value>) {
+            Function::native_expanded(
+                [](Ctx ctx) {
                     auto obj = make_shared<Object>();
                     obj->prototype = ctx.global.core->get("object").as<Object>();
                     return obj;

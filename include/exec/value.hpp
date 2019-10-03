@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <functional>
 #include <unordered_map>
 #include <variant>
@@ -110,6 +111,12 @@ namespace ejdi::exec::value {
     struct IFunction;
     struct NativeFunction;
 
+    template< std::size_t... Is >
+    auto values_tuple(std::vector<Value>& args, std::integer_sequence<std::size_t, Is...>) {
+        return std::make_tuple(std::move(args[Is])...);
+    }
+
+
     class Function {
         std::unique_ptr<IFunction> func;
 
@@ -117,6 +124,22 @@ namespace ejdi::exec::value {
         Function(std::unique_ptr<IFunction> func) : func(std::move(func)) {}
 
         static Value native(NativeFunction func);
+
+        template< typename... Args, typename F >
+        static Value native_expanded(F func) {
+            auto wrapper = [func{std::move(func)}](const context::Context& ctx, std::vector<Value> args) {
+                if (args.size() < sizeof...(Args)) {
+                    assert("not enough arguments" && 0);
+                }
+
+                auto seq = std::index_sequence_for<Args...>();
+                return std::apply([&](auto&&... args) {
+                    return func(ctx, std::move(args.template as<Args>())...);
+                }, values_tuple(args, seq));
+            };
+
+            return native(std::move(wrapper));
+        }
 
         Value call(const context::Context& ctx, std::vector<Value> args);
     };

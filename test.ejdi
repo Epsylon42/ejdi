@@ -1,15 +1,15 @@
 {
-    let a = 0;
-    let str = "";
-    while a != 10 {
-        str = str ~ a.to_s() ~ "\n";
-        a = a + 1;
+    let line = readline();
+    let i = 0;
+    let break = false;
+    while {i < line.len()} && !break {
+        if line.at(i) == " " {
+            line = line.slice(i, line.len());
+            break = true;
+        };
+
+        i = i + 1;
     };
 
-    print(str);
-    print(-a, "\n");
-
-    let x = obj();
-    x.y = print;
-    x.y();
+    print(line);
 }
