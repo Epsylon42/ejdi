@@ -111,7 +111,6 @@ namespace ejdi::exec::value {
         Value(std::shared_ptr<Object> val) : value(std::move(val)) {}
         Value(std::shared_ptr<Array> val) : value(std::move(val)) {}
         Value(Array val) : value(std::make_shared<Array>(std::move(val))) {}
-        Value(std::initializer_list<Value> list) : value(std::make_shared<Array>(move(list))) {}
 
         template< typename T >
         bool is() {
@@ -174,7 +173,7 @@ namespace ejdi::exec::value {
         static Value native_expanded(F func) {
             auto wrapper = [func{std::move(func)}](context::Context& ctx, std::vector<Value> args) {
                 if (args.size() < sizeof...(Args)) {
-                    std::string msg = "not enough arguments: needs at least ";
+                    std::string msg = "not enough arguments: need at least ";
                     msg += std::to_string(sizeof...(Args));
                     msg += ", got ";
                     msg += std::to_string(args.size());

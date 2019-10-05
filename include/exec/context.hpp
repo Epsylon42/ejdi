@@ -18,6 +18,7 @@ namespace ejdi::exec::context {
         std::shared_ptr<value::Object> scope;
 
         error::RuntimeError error(std::string message, span::Span span = span::Span::empty()) const;
+        error::RuntimeError arg_count_error(std::size_t expected, std::size_t got, span::Span = span::Span::empty()) const;
     };
 
     struct GlobalContext {

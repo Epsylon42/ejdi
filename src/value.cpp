@@ -41,8 +41,7 @@ namespace ejdi::exec::value {
         if (ptr != nullptr) {
             return *ptr;
         } else {
-            cerr << name << endl;
-            assert("field not found" && 0);
+            throw error::RuntimeError { string("field '" + name + "' not found") };
         }
     }
 
@@ -88,17 +87,17 @@ namespace ejdi::exec::value {
 #define VTABLE(table) (*ctx.global.core->get(table).as<Object>())
 
         if (val.is<Unit>()) {
-            return VTABLE("unit");
+            return VTABLE("Unit");
         } else if (val.is<float>()) {
-            return VTABLE("number");
+            return VTABLE("Number");
         } else if (val.is<bool>()) {
-            return VTABLE("boolean");
+            return VTABLE("Boolean");
         } else if (val.is<string>()) {
-            return VTABLE("string");
+            return VTABLE("String");
         } else if (val.is<Function>()) {
-            return VTABLE("function");
+            return VTABLE("Function");
         } else if (val.is<Array>()) {
-            return VTABLE("array");
+            return VTABLE("Array");
         } else {
             return *val.as<Object>();
         }

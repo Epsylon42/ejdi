@@ -30,8 +30,12 @@ static Value number() {
              Function::native_expanded<float>(
                 [](Ctx, float val) {
                     auto str = to_string(val);
+
                     if (str.find('.') != string::npos) {
-                        while (str.back() == '0' || str.back() == '.') {
+                        while (str.back() == '0') {
+                            str.pop_back();
+                        }
+                        if (str.back() == '.') {
                             str.pop_back();
                         }
                     }
@@ -195,6 +199,44 @@ static Value array_() {
                      return res;
                  })
         );
+    obj->set("push",
+             Function::native(
+                 [](Ctx ctx, vector<Value> val) {
+                     if (val.size() == 0) {
+                         throw ctx.arg_count_error(1, 0);
+                     }
+
+                     auto& arr = val[0].as<Array>();
+
+                     for (auto iter = next(val.begin()); iter != val.end(); ++iter) {
+                         arr->push_back(move(*iter));
+                     }
+
+                     return Unit{};
+                 })
+        );
+    obj->set("pop",
+             Function::native_expanded<Array>(
+                 [](Ctx, auto arr) -> Value {
+                     if (arr->empty()) {
+                         return Unit{};
+                     }
+
+                     auto ret = move(arr->back());
+                     arr->pop_back();
+                     return ret;
+                 })
+        );
+    obj->set("at",
+             Function::native_expanded<Array, float>(
+                 [](Ctx ctx, auto arr, size_t index) {
+                     if (arr->size() < index) {
+                         throw ctx.error("array index out of bounds");
+                     }
+
+                     return (*arr)[index];
+                 })
+        );
 
     return obj;
 }
@@ -205,17 +247,36 @@ namespace ejdi::exec::context {
         return RuntimeError { move(message), span, global.stack_trace };
     }
 
+    RuntimeError Context::arg_count_error(size_t expected, size_t got, Span span) const {
+        string msg = "not enough arguments: need at least ";
+        msg += to_string(expected);
+        msg += ", got ";
+        msg += to_string(got);
+
+        return error(move(msg), span);
+    }
+
     GlobalContext GlobalContext::with_core() {
         auto core = make_shared<Object>();
-        core->set("unit", unit());
-        core->set("number", number());
-        core->set("boolean", boolean());
-        core->set("string", string_());
-        core->set("function", function_());
-        core->set("object", object());
-        core->set("array", array_());
+
+        vector<tuple<string, function<Value()>>> prototypes = {
+            { "Unit", unit },
+            { "Number", number },
+            { "Boolean", boolean },
+            { "String", string_ },
+            { "Function", function_ },
+            { "Object", object },
+            { "Array", array_ }
+        };
 
         auto prelude = make_shared<Object>();
+
+        for (auto& [ name, func ] : prototypes) {
+            auto proto = func();
+            core->set(name, proto);
+            prelude->set(name, proto);
+        }
+
         prelude->set(
             "print",
             Function::native(
