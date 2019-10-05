@@ -93,6 +93,10 @@ namespace ejdi::exec {
             return left.as<Object>() == right.as<Object>();
         }
 
+        int cmp(const shared_ptr<Array>&) {
+            return left.as<Array>() == right.as<Array>();
+        }
+
         int compare() {
             return visit([this](const auto& x){ return this->cmp(x); }, left.value);
         }
@@ -233,6 +237,15 @@ namespace ejdi::exec {
 
         Value ev(const BoolLiteral& lit) {
             return lit.value;
+        }
+
+        Value ev(const ArrayLiteral& lit) {
+            auto arr = make_shared<Array>();
+            for (const auto& elem : lit.elements->list) {
+                arr->push_back(eval(ctx, elem));
+            }
+
+            return arr;
         }
 
         template< typename T >

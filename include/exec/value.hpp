@@ -20,8 +20,17 @@ namespace ejdi::exec::value {
     struct Value;
     class Object;
     class Function;
+    using Array = std::vector<Value>;
 
-    using ValueVariant = std::variant<Unit, float, bool, std::shared_ptr<std::string>, std::shared_ptr<Function>, std::shared_ptr<Object>>;
+    using ValueVariant = std::variant<
+        Unit,
+        float,
+        bool,
+        std::shared_ptr<std::string>,
+        std::shared_ptr<Function>,
+        std::shared_ptr<Object>,
+        std::shared_ptr<Array>
+        >;
 
     template< typename T >
     struct _WrappedRc {
@@ -38,6 +47,10 @@ namespace ejdi::exec::value {
     template<>
     struct _WrappedRc<Object> {
         using TYPE = std::shared_ptr<Object>;
+    };
+    template<>
+    struct _WrappedRc<Array> {
+        using TYPE = std::shared_ptr<Array>;
     };
     template< typename T >
     using WrappedRc = _WrappedRc<T>::TYPE;
@@ -60,6 +73,9 @@ namespace ejdi::exec::value {
     inline std::string_view __type_name(Object*) {
         return "object";
     }
+    inline std::string_view __type_name(Array*) {
+        return "array";
+    }
     inline std::string_view __type_name(std::shared_ptr<std::string>*) {
         return "string";
     }
@@ -68,6 +84,9 @@ namespace ejdi::exec::value {
     }
     inline std::string_view __type_name(std::shared_ptr<Object>*) {
         return "object";
+    }
+    inline std::string_view __type_name(std::shared_ptr<Array>*) {
+        return "array";
     }
     template< typename T >
     inline std::string_view type_name() {
@@ -90,6 +109,9 @@ namespace ejdi::exec::value {
         Value(std::shared_ptr<std::string> val) : value(std::move(val)) {}
         Value(std::shared_ptr<Function> val) : value(std::move(val)) {}
         Value(std::shared_ptr<Object> val) : value(std::move(val)) {}
+        Value(std::shared_ptr<Array> val) : value(std::move(val)) {}
+        Value(Array val) : value(std::make_shared<Array>(std::move(val))) {}
+        Value(std::initializer_list<Value> list) : value(std::make_shared<Array>(move(list))) {}
 
         template< typename T >
         bool is() {
@@ -120,6 +142,7 @@ namespace ejdi::exec::value {
         static std::shared_ptr<Object> scope(std::shared_ptr<Object> parent = nullptr);
 
         Value& get(const std::string& name);
+        Function& getf(const std::string& name);
         /*nullable*/ Value* try_get(const std::string& name);
         /*nullable*/ Value* try_get_no_prototype(const std::string& name);
         void set(std::string name, Value value);

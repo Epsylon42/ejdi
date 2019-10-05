@@ -172,6 +172,33 @@ static Value object() {
     return obj;
 }
 
+static Value array_() {
+    auto obj = make_shared<Object>();
+    obj->set("to_s",
+             Function::native_expanded<Array>(
+                 [](Ctx ctx, auto arr) {
+                     string res = "[";
+                     for (auto& elem : *arr) {
+                         res += *get_vtable(ctx, elem)
+                             .getf("to_s")
+                             .call(ctx, { elem })
+                             .template as<string>();
+
+                         res += ", ";
+                     }
+                     if (!arr->empty()) {
+                         res.pop_back();
+                         res.pop_back();
+                     }
+                     res += ']';
+
+                     return res;
+                 })
+        );
+
+    return obj;
+}
+
 
 namespace ejdi::exec::context {
     RuntimeError Context::error(string message, Span span) const {
@@ -186,6 +213,7 @@ namespace ejdi::exec::context {
         core->set("string", string_());
         core->set("function", function_());
         core->set("object", object());
+        core->set("array", array_());
 
         auto prelude = make_shared<Object>();
         prelude->set(
@@ -193,7 +221,7 @@ namespace ejdi::exec::context {
             Function::native(
                 [](Ctx ctx, vector<Value> args) {
                     for (auto& val : args) {
-                        auto str = get_vtable(ctx, val).get("to_s").as<Function>()->call(ctx, {val});
+                        auto str = get_vtable(ctx, val).getf("to_s").call(ctx, {val});
                         cout << *str.as<string>();
                     }
                     cout.flush();

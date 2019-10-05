@@ -79,6 +79,12 @@ ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
         return Expr(move(boolean.get()));
     }
 
+    auto array = DO(parse_array_literal(stream));
+    if (array.has_result()) {
+        in = stream;
+        return Expr(move(array.get()));
+    }
+
     auto block = DO(parse_block(stream));
     if (block.has_result()) {
         in = stream;
@@ -370,4 +376,10 @@ ParserResult<Rc<BoolLiteral>> parser::parse_bool_literal(ParseStream& in) {
     } else {
         return in.expected("boolean literal");
     }
+}
+
+ParserResult<Rc<ArrayLiteral>> parser::parse_array_literal(ParseStream& in) {
+    auto list = TRY(parse_list<Expr>(parse_expr, "[]", in));
+
+    return make_shared<ArrayLiteral>(ArrayLiteral { move(list) });
 }

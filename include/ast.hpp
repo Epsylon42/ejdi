@@ -29,6 +29,7 @@ namespace ejdi::ast {
     struct StringLiteral;
     struct NumberLiteral;
     struct BoolLiteral;
+    struct ArrayLiteral;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
@@ -45,8 +46,18 @@ namespace ejdi::ast {
         Rc<IfThenElse>,
         Rc<StringLiteral>,
         Rc<NumberLiteral>,
-        Rc<BoolLiteral>
+        Rc<BoolLiteral>,
+        Rc<ArrayLiteral>
     >;
+
+
+    template< typename T >
+    struct List {
+        std::optional<lexer::groups::ParenPair> parens;
+        std::vector<T> list;
+
+        span::Span span() const;
+    };
 
 
     struct Assignment {
@@ -107,14 +118,6 @@ namespace ejdi::ast {
         Expr expr;
 
         std::string debug(std::size_t depth = 0) const;
-        span::Span span() const;
-    };
-
-    template< typename T >
-    struct List {
-        std::optional<lexer::groups::ParenPair> parens;
-        std::vector<T> list;
-
         span::Span span() const;
     };
 
@@ -181,6 +184,13 @@ namespace ejdi::ast {
     struct BoolLiteral {
         lexer::Word word;
         bool value;
+
+        std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
+    };
+
+    struct ArrayLiteral {
+        Rc<List<Expr>> elements;
 
         std::string debug(std::size_t depth = 0) const;
         span::Span span() const;

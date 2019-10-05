@@ -109,6 +109,7 @@ namespace ejdi::parser {
     PR(NumberLiteral) parse_number_literal(ParseStream& in);
     PR(StringLiteral) parse_string_literal(ParseStream& in);
     PR(BoolLiteral) parse_bool_literal(ParseStream& in);
+    PR(ArrayLiteral) parse_array_literal(ParseStream& in);
 
     template< typename T >
     PR(List<T>) parse_list(

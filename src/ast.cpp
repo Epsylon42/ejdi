@@ -299,6 +299,22 @@ Span ast::BoolLiteral::span() const {
 }
 
 
+string ast::ArrayLiteral::debug(size_t depth) const {
+    string res = offset(depth) + "array";
+
+    for (const auto& elem : elements->list) {
+        res += '\n';
+        res += ast_debug(elem, depth + 1);
+    }
+
+    return res;
+}
+
+Span ast::ArrayLiteral::span() const {
+    return elements->span();
+}
+
+
 template< typename T >
 Span ast::List<T>::span() const {
     if (parens.has_value()) {

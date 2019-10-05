@@ -46,6 +46,10 @@ namespace ejdi::exec::value {
         }
     }
 
+    Function& Object::getf(const string& name) {
+        return *get(name).as<Function>();
+    }
+
     void Object::set_no_prototype(string name, Value value) {
         map.insert_or_assign(move(name), move(value));
     }
@@ -93,6 +97,8 @@ namespace ejdi::exec::value {
             return VTABLE("string");
         } else if (val.is<Function>()) {
             return VTABLE("function");
+        } else if (val.is<Array>()) {
+            return VTABLE("array");
         } else {
             return *val.as<Object>();
         }
