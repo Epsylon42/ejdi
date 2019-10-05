@@ -15,11 +15,9 @@ cppm_compiler_option(
 	DEBUG
 		CLANG "-Wall -Werror"
 		GCC   "-Wall -Werror"
-		MSVC  "/MP"
 	RELEASE
 		CLANG "-Wall -Werror"
 		GCC   "-Wall -Werror"
-		MSVC  "/MP"
 )
 
 

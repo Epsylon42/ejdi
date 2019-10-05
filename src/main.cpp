@@ -19,8 +19,13 @@ using namespace ejdi;
 using namespace ejdi::lexer;
 using namespace ejdi::lexer::groups;
 
-int main() {
-    auto file = ifstream("test.ejdi");
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        cerr << "not enough arguments" << endl;
+        return 1;
+    }
+
+    auto file = ifstream(argv[1]);
     string source {istreambuf_iterator<char>(file), {}};
 
     auto linemap = linemap::Linemap(source);
@@ -49,8 +54,8 @@ int main() {
     } else {
         auto& error = program.error();
         auto pos = linemap.span_to_pos_pair(error.span).first;
-        cout << "ERROR at " << pos.line+1 << ':' << pos.column << endl;
-        cout << "  expected " << error.expected
+        cerr << "ERROR at " << pos.line+1 << ':' << pos.column << endl;
+        cerr << "  expected " << error.expected
              << " but got " << error.got
              << endl;
     }

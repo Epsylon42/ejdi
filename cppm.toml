@@ -7,7 +7,6 @@
 [compiler]
    clang = {option = "-Wall -Werror"}
    gcc   = {option = "-Wall -Werror"}
-   msvc  = {option = "/MP"}
 
 [[bin]]
    name = "ejdi"
