@@ -282,6 +282,12 @@ ParserResult<Rc<ExprStmt>> parser::parse_expr_stmt(ParseStream& in) {
     return make_shared<ExprStmt>(ExprStmt{ move(expr), semi });
 }
 
+ParserResult<Rc<EmptyStmt>> parser::parse_empty_stmt(ParseStream& in) {
+    auto semi = TRY(parse_str<Punct>(";", in));
+
+    return make_shared<EmptyStmt>(EmptyStmt { semi });
+}
+
 ParserResult<Stmt> parser::parse_stmt(ParseStream& in) {
     auto stream = in.clone();
     auto assignment = DO(parse_assignment(stream));
@@ -296,6 +302,12 @@ ParserResult<Stmt> parser::parse_stmt(ParseStream& in) {
     if (expr_stmt.has_result()) {
         in = stream;
         return Stmt(move(expr_stmt.get()));
+    }
+
+    auto empty = DO(parse_empty_stmt(stream));
+    if (empty.has_result()) {
+        in = stream;
+        return Stmt(move(empty.get()));
     }
 
     return in.expected("statement");
@@ -323,14 +335,24 @@ ParserResult<Rc<Block>> parser::parse_block(ParseStream& in) {
             group_stream = group_stream_clone;
         } else {
             auto expr = TRY(parse_expr(group_stream));
-            if (!group_stream.is_empty()) {
+            if (group_stream.is_empty()) {
+                in = stream;
+                return make_shared<Block>(Block{ move(parens), move(statements), move(expr) });
+            }
+
+            if (ast_is<Block>(expr) ||
+                ast_is<IfThenElse>(expr) ||
+                ast_is<WhileLoop>(expr) ||
+                ast_is<ForLoop>(expr)
+            ) {
+                statements.push_back(
+                    make_shared<ExprStmt>(ExprStmt { move(expr), Punct(Span::empty(), string_view(";")) })
+                );
+            } else {
                 auto err = group_stream.expected("; or }");
                 err->critical = true;
                 return err;
             }
-
-            in = stream;
-            return make_shared<Block>(Block{ move(parens), move(statements), move(expr) });
         }
     }
 
@@ -386,12 +408,12 @@ ParserResult<Rc<IfThenElse>> parser::parse_conditional(ParseStream& in) {
     auto cond = TRY_CRITICAL(parse_expr(stream));
     auto then = TRY_CRITICAL(parse_block(stream));
 
-    optional<tuple<Word, Expr>> else_;
+    optional<tuple<Word, Rc<Block>>> else_;
     if (stream.peek("else")) {
         auto else_word = TRY(parse_str<Word>("else", stream));
-        auto else_expr = TRY_CRITICAL(parse_expr(stream));
+        auto else_block = TRY_CRITICAL(parse_block(stream));
 
-        else_ = make_tuple(else_word, move(else_expr));
+        else_ = make_tuple(else_word, move(else_block));
     }
 
     in = stream;

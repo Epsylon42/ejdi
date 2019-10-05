@@ -15,6 +15,7 @@ namespace ejdi::ast {
 
     struct Assignment;
     struct ExprStmt;
+    struct EmptyStmt;
 
     struct Variable;
     struct Block;
@@ -34,7 +35,7 @@ namespace ejdi::ast {
     struct FunctionLiteral;
 
 
-    using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
+    using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>, Rc<EmptyStmt>>;
     using Expr = std::variant<
         Rc<Variable>,
         Rc<Block>,
@@ -78,6 +79,13 @@ namespace ejdi::ast {
 
     struct ExprStmt {
         Expr expr;
+        lexer::Punct semi;
+
+        std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
+    };
+
+    struct EmptyStmt {
         lexer::Punct semi;
 
         std::string debug(std::size_t depth = 0) const;
@@ -177,7 +185,7 @@ namespace ejdi::ast {
         lexer::Word if_;
         Expr condition;
         Rc<Block> then;
-        std::optional<std::tuple<lexer::Word, Expr>> else_;
+        std::optional<std::tuple<lexer::Word, Rc<Block>>> else_;
 
         std::string debug(std::size_t depth = 0) const;
         span::Span span() const;

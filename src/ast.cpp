@@ -68,6 +68,15 @@ Span ast::ExprStmt::span() const {
 }
 
 
+string ast::EmptyStmt::debug(size_t) const {
+    return ";";
+}
+
+Span ast::EmptyStmt::span() const {
+    return semi.span;
+}
+
+
 string ast::Variable::debug(size_t depth) const {
     string res = offset(depth);
 
@@ -280,7 +289,7 @@ string ast::IfThenElse::debug(size_t depth) const {
         res += offset(depth);
         res += "else\n";
 
-        res += ast_debug(get<1>(*else_), depth + 1);
+        res += get<1>(*else_)->debug(depth + 1);
     }
 
     return res;
@@ -289,7 +298,7 @@ string ast::IfThenElse::debug(size_t depth) const {
 Span ast::IfThenElse::span() const {
     Span ret = if_.span.join(then->span());
     if (else_.has_value()) {
-        return ret.join(ast_span(std::get<1>(*else_)));
+        return ret.join(std::get<1>(*else_)->span());
     } else {
         return ret;
     }

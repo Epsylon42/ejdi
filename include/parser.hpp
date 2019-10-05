@@ -101,6 +101,7 @@ namespace ejdi::parser {
 
     PR(Assignment) parse_assignment(ParseStream& in);
     PR(ExprStmt) parse_expr_stmt(ParseStream& in);
+    PR(EmptyStmt) parse_empty_stmt(ParseStream& in);
     result::ParserResult<ast::Stmt> parse_stmt(ParseStream& in);
 
     PR(Block) parse_block(ParseStream& in);

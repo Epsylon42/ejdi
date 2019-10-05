@@ -34,7 +34,7 @@ let make_arr = func() {
     let arr = [];
     for i in range(10) {
         arr.push(i)
-    };
+    }
     arr
 };
 
@@ -42,7 +42,7 @@ Array.map = func(self, f) {
     let res = [];
     for elem in self {
         res.push(f(elem));
-    };
+    }
     res
 };
 

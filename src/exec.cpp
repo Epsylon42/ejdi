@@ -47,6 +47,8 @@ namespace ejdi::exec {
                 }
             } else if (ast_is<ExprStmt>(stmt)) {
                 eval(ctx, ast_get<ExprStmt>(stmt)->expr);
+            } else if (ast_is<EmptyStmt>(stmt)) {
+                return;
             } else {
                 assert("invalid statement value" && 0);
             }
@@ -258,7 +260,7 @@ namespace ejdi::exec {
             if (eval(ctx, cond.condition).as<bool>()) {
                 return ev(*cond.then);
             } else if (cond.else_.has_value()) {
-                return eval(ctx, get<1>(*cond.else_));
+                return ev(*get<1>(*cond.else_));
             } else {
                 return Unit{};
             }
