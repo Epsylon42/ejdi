@@ -61,37 +61,37 @@ unique_ptr<ParserError> ParseStream::expected(string expected) const {
 ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
     auto stream = in.clone();
 
-    auto num = DO(parse<Rc<NumberLiteral>>(stream));
+    auto num = DO(parse_number_literal(stream));
     if (num.has_result()) {
         in = stream;
         return Expr(move(num.get()));
     }
 
-    auto str = DO(parse<Rc<StringLiteral>>(stream));
+    auto str = DO(parse_string_literal(stream));
     if (str.has_result()) {
         in = stream;
         return Expr(move(str.get()));
     }
 
-    auto boolean = DO(parse<Rc<BoolLiteral>>(stream));
+    auto boolean = DO(parse_bool_literal(stream));
     if (boolean.has_result()) {
         in = stream;
         return Expr(move(boolean.get()));
     }
 
-    auto block = DO(parse<Rc<Block>>(stream));
+    auto block = DO(parse_block(stream));
     if (block.has_result()) {
         in = stream;
         return Expr(move(block.get()));
     }
 
-    auto if_ = DO(parse<Rc<IfThenElse>>(stream));
+    auto if_ = DO(parse_conditional(stream));
     if (if_.has_result()) {
         in = stream;
         return Expr(move(if_.get()));
     }
 
-    auto while_ = DO(parse<Rc<WhileLoop>>(stream));
+    auto while_ = DO(parse_while_loop(stream));
     if (while_.has_result()) {
         in = stream;
         return Expr(move(while_.get()));
@@ -144,10 +144,10 @@ ParserResult<Expr> parser::parse_access_expr(ParseStream& in) {
 
     while (true) {
         if (stream.peek(".")) {
-            auto dot = TRY(parse<lexer::Punct>(stream, "."));
-            auto field = TRY_CRITICAL(parse<lexer::Word>(stream));
+            auto dot = TRY(parse_str<Punct>(".", stream));
+            auto field = TRY_CRITICAL(parse<Word>(stream));
 
-            auto args = DO(parse_list<Expr>(stream, "()"));
+            auto args = DO(parse_list<Expr>(parse_expr, "()", stream));
 
             if (args.has_result()) {
                 primary = make_shared<MethodCall>(
@@ -166,7 +166,7 @@ ParserResult<Expr> parser::parse_access_expr(ParseStream& in) {
                     });
             }
         } else {
-            auto args = DO(parse_list<Expr>(stream, "()"));
+            auto args = DO(parse_list<Expr>(parse_expr, "()", stream));
             if (args.has_result()) {
                 primary = make_shared<FunctionCall>(
                     FunctionCall {
@@ -184,38 +184,34 @@ ParserResult<Expr> parser::parse_access_expr(ParseStream& in) {
     return primary;
 }
 
-template<>
-ParserResult<Expr> parser::parse<Expr>(ParseStream& in) {
+ParserResult<Expr> parser::parse_expr(ParseStream& in) {
     const auto valid_ops = { "==", "!=", "<=", ">=", "<", ">", "+", "-", "*", "/", "%", "~", "&&", "||" };
 
-    auto left = TRY(parse_unary_expr(in));
+    auto expr = TRY(parse_unary_expr(in));
 
-    if (any_of(
+
+    while (any_of(
             valid_ops.begin(),
             valid_ops.end(),
             [&](auto valid_op){ return in.peek(valid_op); }
             )
         ) {
         auto stream = in;
+
         auto op = TRY(parse<Punct>(stream));
-        auto right = TRY(parse<Expr>(stream));
+        auto right = TRY_CRITICAL(parse_unary_expr(stream));
 
         in = stream;
-        return Expr(
-            make_shared<BinaryOp>(
-                BinaryOp { move(op), move(left), move(right) }
-                )
-            );
-    } else {
-        return Expr(move(left));
+        expr = make_shared<BinaryOp>(BinaryOp { move(op), move(expr), move(right) });
     }
+
+    return expr;
 }
 
-template<>
-ParserResult<Rc<Assignment>> parser::parse<Rc<Assignment>>(ParseStream& in) {
+ParserResult<Rc<Assignment>> parser::parse_assignment(ParseStream& in) {
     auto stream = in.clone();
 
-    auto let = try_parse<Word>(stream, "let");
+    auto let = try_parse<Word>(bind_front(parse_str<Word>, "let"), stream);
 
     optional<Expr> base;
     optional<Word> field;
@@ -233,9 +229,9 @@ ParserResult<Rc<Assignment>> parser::parse<Rc<Assignment>>(ParseStream& in) {
     }
     stream = dest_stream;
 
-    auto assignment = TRY(parse<Punct>(stream, "="));
-    auto expr = TRY_CRITICAL(parse<Expr>(stream));
-    auto semi = TRY_CRITICAL(parse<Punct>(stream, ";"));
+    auto assignment = TRY(parse_str<Punct>("=", stream));
+    auto expr = TRY_CRITICAL(parse_expr(stream));
+    auto semi = TRY_CRITICAL(parse_str<Punct>(";", stream));
 
     in = stream;
 
@@ -249,23 +245,20 @@ ParserResult<Rc<Assignment>> parser::parse<Rc<Assignment>>(ParseStream& in) {
     });
 }
 
-template<>
-ParserResult<Rc<ExprStmt>> parser::parse<Rc<ExprStmt>>(ParseStream& in) {
+ParserResult<Rc<ExprStmt>> parser::parse_expr_stmt(ParseStream& in) {
     auto stream = in.clone();
 
-    auto expr = TRY(parse<Expr>(stream));
-    auto semi = TRY(parse<Punct>(stream, ";"));
+    auto expr = TRY(parse_expr(stream));
+    auto semi = TRY(parse_str<Punct>(";", stream));
 
     in = stream;
 
     return make_shared<ExprStmt>(ExprStmt{ move(expr), semi });
 }
 
-template<>
-ParserResult<Stmt> parser::parse<Stmt>(ParseStream& in) {
-    //TODO: improve error handling
+ParserResult<Stmt> parser::parse_stmt(ParseStream& in) {
     auto stream = in.clone();
-    auto assignment = DO(parse<Rc<Assignment>>(stream));
+    auto assignment = DO(parse_assignment(stream));
     if (assignment.has_result()) {
         in = stream;
         return Stmt(move(assignment.get()));
@@ -273,7 +266,7 @@ ParserResult<Stmt> parser::parse<Stmt>(ParseStream& in) {
 
     stream = in.clone();
 
-    auto expr_stmt = DO(parse<Rc<ExprStmt>>(stream));
+    auto expr_stmt = DO(parse_expr_stmt(stream));
     if (expr_stmt.has_result()) {
         in = stream;
         return Stmt(move(expr_stmt.get()));
@@ -282,26 +275,25 @@ ParserResult<Stmt> parser::parse<Stmt>(ParseStream& in) {
     return in.expected("statement");
 }
 
-template<>
-ParserResult<Rc<Block>> parser::parse<Rc<Block>>(ParseStream& in) {
+ParserResult<Rc<Block>> parser::parse_block(ParseStream& in) {
     auto stream = in.clone();
     auto group = TRY(parse<Rc<Group>>(stream));
     auto parens = group->surrounding;
 
     vector<Stmt> statements;
-    ParseStream group_stream(*group);
+    auto group_stream = ParseStream(*group);
     while (true) {
         if (group_stream.is_empty()) {
             break;
         }
 
         auto group_stream_clone = group_stream.clone();
-        auto stmt = DO(parse<Stmt>(group_stream_clone));
+        auto stmt = DO(parse_stmt(group_stream_clone));
         if (stmt.has_result()) {
             statements.push_back(stmt.get());
             group_stream = group_stream_clone;
         } else {
-            auto expr = TRY(parse<Expr>(group_stream));
+            auto expr = TRY(parse_expr(group_stream));
             if (!group_stream.is_empty()) {
                 return group_stream.expected("; or }");
             }
@@ -315,13 +307,12 @@ ParserResult<Rc<Block>> parser::parse<Rc<Block>>(ParseStream& in) {
     return make_shared<Block>(Block{ move(parens), move(statements), nullopt });
 }
 
-template<>
-ParserResult<Rc<WhileLoop>> parser::parse<Rc<WhileLoop>>(ParseStream& in) {
+ParserResult<Rc<WhileLoop>> parser::parse_while_loop(ParseStream& in) {
     auto stream = in.clone();
 
-    auto while_ = TRY(parse<Word>(stream, "while"));
-    auto cond = TRY_CRITICAL(parse<Expr>(stream));
-    auto block = TRY_CRITICAL(parse<Rc<Block>>(stream));
+    auto while_ = TRY(parse_str<Word>("while", stream));
+    auto cond = TRY_CRITICAL(parse_expr(stream));
+    auto block = TRY_CRITICAL(parse_block(stream));
 
     in = stream;
 
@@ -334,18 +325,17 @@ ParserResult<Rc<WhileLoop>> parser::parse<Rc<WhileLoop>>(ParseStream& in) {
     );
 }
 
-template<>
-ParserResult<Rc<IfThenElse>> parser::parse<Rc<IfThenElse>>(ParseStream& in) {
+ParserResult<Rc<IfThenElse>> parser::parse_conditional(ParseStream& in) {
     auto stream = in.clone();
 
-    auto if_ = TRY(parse<Word>(stream, "if"));
-    auto cond = TRY_CRITICAL(parse<Expr>(stream));
-    auto then = TRY_CRITICAL(parse<Rc<Block>>(stream));
+    auto if_ = TRY(parse_str<Word>("if", stream));
+    auto cond = TRY_CRITICAL(parse_expr(stream));
+    auto then = TRY_CRITICAL(parse_block(stream));
 
     optional<tuple<Word, Expr>> else_;
     if (stream.peek("else")) {
-        auto else_word = TRY(parse<Word>(stream, "else"));
-        auto else_expr = TRY(parse<Expr>(stream));
+        auto else_word = TRY(parse_str<Word>("else", stream));
+        auto else_expr = TRY_CRITICAL(parse_expr(stream));
 
         else_ = make_tuple(else_word, move(else_expr));
     }
@@ -362,24 +352,21 @@ ParserResult<Rc<IfThenElse>> parser::parse<Rc<IfThenElse>>(ParseStream& in) {
     );
 }
 
-template<>
-ParserResult<Rc<NumberLiteral>> parser::parse<Rc<NumberLiteral>>(ParseStream& in) {
+ParserResult<Rc<NumberLiteral>> parser::parse_number_literal(ParseStream& in) {
     auto lit = TRY(parse<lexer::NumberLit>(in));
     return make_shared<NumberLiteral>(NumberLiteral { lit });
 }
 
-template<>
-ParserResult<Rc<StringLiteral>> parser::parse<Rc<StringLiteral>>(ParseStream& in) {
+ParserResult<Rc<StringLiteral>> parser::parse_string_literal(ParseStream& in) {
     auto lit = TRY(parse<lexer::StringLit>(in));
     return make_shared<StringLiteral>(StringLiteral { lit });
 }
 
-template<>
-ParserResult<Rc<BoolLiteral>> parser::parse<Rc<BoolLiteral>>(ParseStream& in) {
+ParserResult<Rc<BoolLiteral>> parser::parse_bool_literal(ParseStream& in) {
     if (in.peek("true")) {
-        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse<Word>(in, "true")), true });
+        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse_str<Word>("true", in)), true });
     } else if (in.peek("false")) {
-        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse<Word>(in, "false")), false });
+        return make_shared<BoolLiteral>(BoolLiteral { TRY(parse_str<Word>("false", in)), false });
     } else {
         return in.expected("boolean literal");
     }

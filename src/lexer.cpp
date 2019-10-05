@@ -47,7 +47,7 @@ Span ejdi::lexer::get_span(const Lexem& lexem) {
 }
 
 string_view ejdi::lexer::get_str(const Lexem& lexem) {
-    return visit([](const auto& lexem) { return lexem.str; }, lexem);
+    return *visit([](const auto& lexem) { return &lexem.str; }, lexem);
 }
 
 template<>

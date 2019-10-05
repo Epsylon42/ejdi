@@ -3,7 +3,7 @@
     print(line.ord(), "\n");
     let i = 0;
     let break = false;
-    while {i < line.len()} && !break {
+    while i < line.len() && !break {
         if line.at(i) == " " {
             line = line.slice(i, line.len());
             break = true;

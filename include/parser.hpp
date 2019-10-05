@@ -6,6 +6,7 @@
 #include <exception>
 #include <variant>
 #include <iostream>
+#include <functional>
 
 #include <lexer.hpp>
 #include <lexem_groups.hpp>
@@ -65,6 +66,9 @@ namespace ejdi::parser {
         }
     };
 
+    template< typename T >
+    using Parser = std::function<result::ParserResult<T>(ParseStream&)>;
+
 
     template< typename T >
     result::ParserResult<T> parse(ParseStream& in) {
@@ -72,46 +76,46 @@ namespace ejdi::parser {
     }
 
     template< typename T >
-    result::ParserResult<T> parse(ParseStream& in, std::string_view str) {
+    result::ParserResult<T> parse_str(std::string_view str, ParseStream& in) {
         return in.parse<T>(str);
     }
 
-    template< typename T, typename... Args >
-    std::optional<T> try_parse(ParseStream& in, Args... args) {
+    template< typename T >
+    std::optional<T> try_parse(Parser<T> parser, ParseStream& in) {
         auto stream = in.clone();
-        auto res = parse<T>(stream, args...).opt();
-        in = stream;
-        return res;
+        auto res = parser(stream);
+        if (res.has_result()) {
+            in = stream;
+            return res.opt();
+        } else {
+            return std::nullopt;
+        }
     }
 
-    template<>
-    result::ParserResult<ast::Expr> parse<ast::Expr>(ParseStream& in);
+#define PR(X) result::ParserResult<ast::Rc<ast::X>>
+    result::ParserResult<ast::Expr> parse_expr(ParseStream& in);
 
     result::ParserResult<ast::Expr> parse_primary_expr(ParseStream& in);
     result::ParserResult<ast::Expr> parse_unary_expr(ParseStream& in);
     result::ParserResult<ast::Expr> parse_access_expr(ParseStream& in);
 
-    template<>
-    result::ParserResult<ast::Rc<ast::Assignment>> parse<ast::Rc<ast::Assignment>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::ExprStmt>> parse<ast::Rc<ast::ExprStmt>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Stmt> parse<ast::Stmt>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::Block>> parse<ast::Rc<ast::Block>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::WhileLoop>> parse<ast::Rc<ast::WhileLoop>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::IfThenElse>> parse<ast::Rc<ast::IfThenElse>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::NumberLiteral>> parse<ast::Rc<ast::NumberLiteral>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::StringLiteral>> parse<ast::Rc<ast::StringLiteral>>(ParseStream& in);
-    template<>
-    result::ParserResult<ast::Rc<ast::BoolLiteral>> parse<ast::Rc<ast::BoolLiteral>>(ParseStream& in);
+    PR(Assignment) parse_assignment(ParseStream& in);
+    PR(ExprStmt) parse_expr_stmt(ParseStream& in);
+    result::ParserResult<ast::Stmt> parse_stmt(ParseStream& in);
+
+    PR(Block) parse_block(ParseStream& in);
+    PR(WhileLoop) parse_while_loop(ParseStream& in);
+    PR(IfThenElse) parse_conditional(ParseStream& in);
+    PR(NumberLiteral) parse_number_literal(ParseStream& in);
+    PR(StringLiteral) parse_string_literal(ParseStream& in);
+    PR(BoolLiteral) parse_bool_literal(ParseStream& in);
 
     template< typename T >
-    result::ParserResult<ast::Rc<ast::List<T>>> parse_list(ParseStream& in, std::optional<std::string_view> parens) {
+    PR(List<T>) parse_list(
+        Parser<T> parse_elem,
+        std::optional<std::string_view> parens,
+        ParseStream& in)
+    {
         using namespace std;
         using namespace ejdi::ast;
         using namespace ejdi::lexer;
@@ -132,18 +136,20 @@ namespace ejdi::parser {
         auto group_stream = ParseStream(group->inner);
         vector<T> items;
 
-        while (!group_stream.is_empty()) {
-            items.push_back(TRY(parse<T>(group_stream)));
+        bool mandatory_element = false;
+        while (!group_stream.is_empty() || mandatory_element) {
+            items.push_back(TRY(parse_elem(group_stream)));
+            mandatory_element = false;
 
             if (group_stream.peek(",")) {
-                TRY(parse<Punct>(group_stream, ","));
-                if (group_stream.is_empty()) {
-                    return group_stream.expected(typeid(T).name());
-                }
+                TRY(parse_str<Punct>(",", group_stream));
+                mandatory_element = true;
             }
         }
 
         in = stream;
         return make_shared<List<T>>(List<T>{ group->surrounding, move(items) });
     }
+
+#undef PR
 }

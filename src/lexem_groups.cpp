@@ -28,7 +28,7 @@ Span span_sum(const vector<LexemTree>& lexems) {
 string lexems_join(const vector<LexemTree>& lexems) {
     return accumulate(
         lexems.cbegin(), lexems.cend(), string(),
-        [](string&& acc, const auto& elem) {
+        [](string acc, const auto& elem) {
             if (!acc.empty()) {
                 acc += " ";
             }

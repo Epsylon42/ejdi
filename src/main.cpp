@@ -24,10 +24,11 @@ int main() {
     auto linemap = linemap::Linemap(source);
 
     auto lexems = lexer::actions::split_string(source, "test.ejdi");
+
     auto group = lexer::groups::find_groups(move(lexems));
 
     parser::ParseStream stream(group->inner);
-    auto block = parser::parse<ast::Rc<ast::Block>>(stream);
+    auto block = parser::parse_block(stream);
     if (block.has_result()) {
         using namespace ejdi::exec;
         using namespace ejdi::exec::value;
