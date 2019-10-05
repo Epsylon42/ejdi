@@ -237,7 +237,7 @@ ParserResult<Expr> parser::parse_expr(ParseStream& in) {
 ParserResult<Rc<Assignment>> parser::parse_assignment(ParseStream& in) {
     auto stream = in.clone();
 
-    auto let = try_parse<Word>(bind_front(parse_str<Word>, "let"), stream);
+    auto let = try_parse<Word>([](auto& in){ return parse_str<Word>("let", in); }, stream);
 
     optional<Expr> base;
     optional<Word> field;

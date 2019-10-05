@@ -2,7 +2,7 @@
    name = "ejdi"
    version = "0.0.1"
    description = ""
-   standard = "2a"
+   standard = "17"
 
 [compiler]
    clang = {option = "-Wall -Werror"}

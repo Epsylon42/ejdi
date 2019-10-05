@@ -54,7 +54,7 @@ namespace ejdi::exec::value {
         using TYPE = std::shared_ptr<Array>;
     };
     template< typename T >
-    using WrappedRc = _WrappedRc<T>::TYPE;
+    using WrappedRc = typename _WrappedRc<T>::TYPE;
 
     inline std::string_view __type_name(Unit*) {
         return "unit";

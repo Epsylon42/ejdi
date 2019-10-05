@@ -10,7 +10,7 @@ project(ejdi LANGUAGES C CXX VERSION 0.0.1)
 
 include(cppm_tool)
 cppm_load()
-cppm_cxx_standard(2a)
+cppm_cxx_standard(17)
 cppm_compiler_option(
 	DEBUG
 		CLANG "-Wall -Werror"

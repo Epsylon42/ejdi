@@ -56,6 +56,16 @@ string ejdi::lexer::lexem_debug<Lexem>(const Lexem& lexem, size_t depth) {
 }
 
 
+static bool starts_with(string_view str, string_view pat) {
+    return str.length() >= pat.length()
+        && str.substr(0, pat.length()) == pat;
+}
+
+static bool starts_with(string_view str, char c) {
+    return !str.empty() && str[0] == c;
+}
+
+
 using SpanConstructor = function<Span(size_t)>;
 
 optional<Lexem> get_punct(string_view str, SpanConstructor span);
@@ -102,7 +112,7 @@ vector<Lexem> actions::split_string(string_view str, string_view filename) {
 
 optional<Lexem> get_punct(string_view str, SpanConstructor span) {
     for (auto punct : punctuation) {
-        if (str.starts_with(punct)) {
+        if (starts_with(str, punct)) {
             return Punct(span(punct.length()), punct);
         }
     }
@@ -112,9 +122,9 @@ optional<Lexem> get_punct(string_view str, SpanConstructor span) {
 
 optional<Lexem> get_paren(string_view str, SpanConstructor span) {
     for (auto [op, cl] : parens) {
-        if (str.starts_with(op)) {
+        if (starts_with(str, op)) {
             return Paren(span(op.length()), op, cl, true);
-        } else if (str.starts_with(cl)) {
+        } else if (starts_with(str, cl)) {
             return Paren(span(cl.length()), op, cl, false);
         }
     }
@@ -158,7 +168,7 @@ optional<Lexem> get_num_lit(string_view str, SpanConstructor span) {
 }
 
 optional<Lexem> get_str_lit(string_view str, SpanConstructor span) {
-    if (str.starts_with('"')) {
+    if (starts_with(str, '"')) {
         string value;
 
         size_t offset = 1;
@@ -170,7 +180,7 @@ optional<Lexem> get_str_lit(string_view str, SpanConstructor span) {
                 }
 
                 for (auto [escape_seq, replacement] : string_escapes) {
-                    if (str.substr(offset).starts_with(escape_seq)) {
+                    if (starts_with(str.substr(offset), escape_seq)) {
                         offset += escape_seq.length();
                         value += replacement;
                         goto cont;

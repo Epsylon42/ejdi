@@ -30,7 +30,7 @@ namespace ejdi::lexer::groups {
     template< typename T >
     bool lexem_is(const LexemTree& tree) {
         if (std::holds_alternative<Lexem>(tree)) {
-            return std::holds_alternative<T>(get<Lexem>(tree));
+            return std::holds_alternative<T>(std::get<Lexem>(tree));
         } else {
             return false;
         }
@@ -48,7 +48,7 @@ namespace ejdi::lexer::groups {
 
     template< typename T >
     T lexer_get(const LexemTree& tree) {
-        return std::get<T>(get<Lexem>(tree));
+        return std::get<T>(std::get<Lexem>(tree));
     }
 
     template<>
