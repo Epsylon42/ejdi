@@ -58,12 +58,10 @@ namespace ejdi::lexer::groups {
 
 
     struct Group : LexemBase {
-        std::optional<ParenPair> surrounding;
+        ParenPair surrounding;
         std::vector<LexemTree> inner;
 
-        Group(std::vector<LexemTree> inner);
-        Group(std::vector<LexemTree> inner,
-              ParenPair surrounding);
+        Group(std::vector<LexemTree> inner, ParenPair surrounding);
 
         std::string debug(std::size_t depth = 0) const override;
     };

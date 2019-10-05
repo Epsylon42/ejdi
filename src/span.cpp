@@ -11,14 +11,15 @@ const char* ejdi::span::SpanError::what() const noexcept {
 }
 
 Span Span::join(Span other) const {
-    if (file != other.file) {
-        throw SpanError();
-    }
     if (is_empty) {
         return other;
     }
     if (other.is_empty) {
         return *this;
+    }
+
+    if (file != other.file) {
+        throw SpanError();
     }
 
     return Span(

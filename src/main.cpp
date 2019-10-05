@@ -16,6 +16,8 @@
 
 using namespace std;
 using namespace ejdi;
+using namespace ejdi::lexer;
+using namespace ejdi::lexer::groups;
 
 int main() {
     auto file = ifstream("test.ejdi");
@@ -27,29 +29,27 @@ int main() {
 
     auto group = lexer::groups::find_groups(move(lexems));
 
-    parser::ParseStream stream(group->inner);
-    auto block = parser::parse_block(stream);
-    if (block.has_result()) {
+    auto program = parser::parse_program(*group);
+    if (program.has_result()) {
         using namespace ejdi::exec;
         using namespace ejdi::exec::value;
         using namespace ejdi::exec::context;
 
-        cout << block.get()->debug() << endl;
+        cout << program.get()->debug() << endl;
 
         auto ctx = GlobalContext::with_core();
 
         auto mod = ctx.new_module("test");
 
-        ast::Expr expr(move(block.get()));
         try {
-            ejdi::exec::eval(mod, expr);
+            ejdi::exec::exec_program(mod, *program.get());
         } catch (error::RuntimeError& e) {
             auto pos = linemap.span_to_pos_pair(e.root_span).first;
             cerr << "RUNTIME ERROR at " << pos.line+1 << ':' << pos.column << endl;
             cerr << "  " << e.root_error << endl;
         }
     } else {
-        auto& error = block.error();
+        auto& error = program.error();
         auto pos = linemap.span_to_pos_pair(error.span).first;
         cout << "ERROR at " << pos.line+1 << ':' << pos.column << endl;
         cout << "  expected " << error.expected

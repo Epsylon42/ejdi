@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 
+#include <ast.hpp>
 #include <exec/error.hpp>
 
 namespace ejdi::exec::context {
@@ -93,6 +94,36 @@ namespace ejdi::exec::value {
         return __type_name(static_cast<T*>(nullptr));
     }
 
+
+    struct Value;
+
+    template< typename T >
+    bool __is_impl(ValueVariant& value) {
+        return std::holds_alternative<WrappedRc<T>>(value);
+    }
+    template<>
+    inline bool __is_impl<Value>(ValueVariant&) {
+        return true;
+    }
+
+    template< typename T >
+    auto& __as_impl(ValueVariant& value, Value&) {
+        if (__is_impl<T>(value)) {
+            return std::get<WrappedRc<T>>(value);
+        } else {
+            std::string msg = "wrong type: expected ";
+            msg += type_name<T>();
+            msg += ", got ";
+            msg += std::visit([](auto& arg){ return __type_name(&arg); }, value);
+            throw error::RuntimeError { std::move(msg) };
+        }
+    }
+
+    template<>
+    inline auto& __as_impl<Value>(ValueVariant&, Value& val) {
+        return val;
+    }
+
     struct Value {
         ValueVariant value;
 
@@ -114,20 +145,12 @@ namespace ejdi::exec::value {
 
         template< typename T >
         bool is() {
-            return std::holds_alternative<WrappedRc<T>>(this->value);
+            return __is_impl<T>(this->value);
         }
 
         template< typename T >
-        auto& as() {
-            if (is<T>()) {
-                return std::get<WrappedRc<T>>(this->value);
-            } else {
-                std::string msg = "wrong type: expected ";
-                msg += type_name<T>();
-                msg += ", got ";
-                msg += std::visit([](auto& arg){ return __type_name(&arg); }, value);
-                throw error::RuntimeError { std::move(msg) };
-            }
+        decltype(auto) as() {
+            return __as_impl<T>(this->value, *this);
         }
 
     };
@@ -154,6 +177,7 @@ namespace ejdi::exec::value {
 
     struct IFunction;
     struct NativeFunction;
+    struct LangFunction;
 
     template< std::size_t... Is >
     auto values_tuple(std::vector<Value>& args, std::integer_sequence<std::size_t, Is...>) {
@@ -167,6 +191,7 @@ namespace ejdi::exec::value {
     public:
         Function(std::unique_ptr<IFunction> func) : func(std::move(func)) {}
 
+        static Value lang(LangFunction func);
         static Value native(NativeFunction func);
 
         template< typename... Args, typename F >
@@ -202,6 +227,17 @@ namespace ejdi::exec::value {
 
         template< typename F >
         NativeFunction(F func) : func(std::move(func)) {}
+
+        Value call(context::Context& ctx, std::vector<Value> args) override;
+    };
+
+    struct LangFunction : IFunction {
+        std::shared_ptr<ast::List<lexer::Word>> argnames;
+        ast::Expr body;
+
+        LangFunction(std::shared_ptr<ast::List<lexer::Word>> argnames, ast::Expr body)
+            : argnames(std::move(argnames))
+            , body(std::move(body)) {}
 
         Value call(context::Context& ctx, std::vector<Value> args) override;
     };

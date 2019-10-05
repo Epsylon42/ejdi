@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <ast.hpp>
 #include <span.hpp>
 
@@ -98,9 +100,10 @@ string ast::Block::debug(size_t depth) const {
 }
 
 Span ast::Block::span() const {
-    if (parens.has_value()) {
-        return parens->span;
+    if (!parens.span.is_empty) {
+        return parens.span;
     }
+
     auto res = Span::empty();
     if (!statements.empty()) {
         res = ast_span(statements.front()).join(ast_span(statements.back()));
@@ -315,13 +318,42 @@ Span ast::ArrayLiteral::span() const {
 }
 
 
+string ast::FunctionLiteral::debug(size_t depth) const {
+    string res = offset(depth) + "func(";
+
+    for (const auto& arg : argnames->list) {
+        res += arg.str;
+        res += ", ";
+    }
+    if (!argnames->list.empty()) {
+        res.pop_back();
+        res.pop_back();
+    }
+
+    res += ")\n";
+    res += ast_debug(body, depth + 1);
+
+    return res;
+}
+
+Span ast::FunctionLiteral::span() const {
+    return func.span.join(ast_span(body));
+}
+
+
 template< typename T >
 Span ast::List<T>::span() const {
-    if (parens.has_value()) {
-        return parens->span;
-    } else if (!list.empty()) {
-        return ast_span(list.front()).join(ast_span(list.back()));
-    } else {
-        return Span::empty();
+    return parens.span;
+}
+
+
+string Program::debug() const {
+    string res;
+
+    for (const auto& stmt : statements) {
+        res += '\n';
+        res += ast_debug(stmt);
     }
+
+    return res;
 }

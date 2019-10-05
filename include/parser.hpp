@@ -110,6 +110,7 @@ namespace ejdi::parser {
     PR(StringLiteral) parse_string_literal(ParseStream& in);
     PR(BoolLiteral) parse_bool_literal(ParseStream& in);
     PR(ArrayLiteral) parse_array_literal(ParseStream& in);
+    PR(FunctionLiteral) parse_function_literal(ParseStream& in);
 
     template< typename T >
     PR(List<T>) parse_list(
@@ -127,7 +128,7 @@ namespace ejdi::parser {
         auto group = TRY(parse<Rc<Group>>(stream));
 
         if (parens.has_value()) {
-            if (group->surrounding.has_value() && group->surrounding->str != *parens) {
+            if (group->surrounding.str != *parens) {
                 string ret = "group surrounded by ";
                 ret += *parens;
                 return in.expected(move(ret));
@@ -153,4 +154,6 @@ namespace ejdi::parser {
     }
 
 #undef PR
+
+    result::ParserResult<ast::Rc<ast::Program>> parse_program(lexer::groups::Group& group);
 }

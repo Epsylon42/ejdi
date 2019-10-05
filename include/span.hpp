@@ -16,6 +16,8 @@ namespace ejdi::span {
         std::size_t end;
         bool is_empty;
 
+        Span() = delete;
+
         Span(std::string file, std::size_t start, std::size_t end)
             : file(file)
             , start(start)

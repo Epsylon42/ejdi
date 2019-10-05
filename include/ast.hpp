@@ -30,6 +30,7 @@ namespace ejdi::ast {
     struct NumberLiteral;
     struct BoolLiteral;
     struct ArrayLiteral;
+    struct FunctionLiteral;
 
 
     using Stmt = std::variant<Rc<Assignment>, Rc<ExprStmt>>;
@@ -47,13 +48,14 @@ namespace ejdi::ast {
         Rc<StringLiteral>,
         Rc<NumberLiteral>,
         Rc<BoolLiteral>,
-        Rc<ArrayLiteral>
+        Rc<ArrayLiteral>,
+        Rc<FunctionLiteral>
     >;
 
 
     template< typename T >
     struct List {
-        std::optional<lexer::groups::ParenPair> parens;
+        lexer::groups::ParenPair parens;
         std::vector<T> list;
 
         span::Span span() const;
@@ -89,7 +91,7 @@ namespace ejdi::ast {
     };
 
     struct Block {
-        std::optional<lexer::groups::ParenPair> parens;
+        lexer::groups::ParenPair parens;
         std::vector<Stmt> statements;
         std::optional<Expr> ret;
 
@@ -194,6 +196,22 @@ namespace ejdi::ast {
 
         std::string debug(std::size_t depth = 0) const;
         span::Span span() const;
+    };
+
+    struct FunctionLiteral {
+        lexer::Word func;
+        Rc<List<lexer::Word>> argnames;
+        Expr body;
+
+        std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
+    };
+
+
+    struct Program {
+        std::vector<Stmt> statements;
+
+        std::string debug() const;
     };
 
 

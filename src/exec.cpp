@@ -11,6 +11,12 @@ using namespace ejdi::exec::context;
 using namespace ejdi::exec::error;
 
 namespace ejdi::exec {
+    void exec_program(Context& ctx, const Program& prog) {
+        for (const auto& stmt : prog.statements) {
+            exec(ctx, stmt);
+        }
+    }
+
     void exec(Context& ctx, const Stmt& stmt) {
         try {
             if (ast_is<Assignment>(stmt)) {
@@ -246,6 +252,10 @@ namespace ejdi::exec {
             }
 
             return arr;
+        }
+
+        Value ev(const FunctionLiteral& lit) {
+            return Function::lang(LangFunction(lit.argnames, lit.body));
         }
 
         template< typename T >

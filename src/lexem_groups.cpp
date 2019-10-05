@@ -13,19 +13,7 @@ using namespace ejdi::lexer::groups;
 using ejdi::span::Span;
 
 
-Span span_sum(const vector<LexemTree>& lexems) {
-    if (lexems.empty()) {
-        return Span::empty();
-    }
-
-    if (lexems.size() == 1) {
-        return get_span(lexems.front());
-    }
-
-    return get_span(lexems.front()).join(get_span(lexems.back()));
-}
-
-string lexems_join(const vector<LexemTree>& lexems) {
+static string lexems_join(const vector<LexemTree>& lexems) {
     return accumulate(
         lexems.cbegin(), lexems.cend(), string(),
         [](string acc, const auto& elem) {
@@ -64,11 +52,6 @@ string groups::lexem_debug(const LexemTree& tree, size_t depth) {
 }
 
 
-Group::Group(vector<LexemTree> inner)
-    : LexemBase(span_sum(inner), lexems_join(inner))
-    , surrounding(nullopt)
-    , inner(move(inner)) {}
-
 Group::Group(vector<LexemTree> inner, ParenPair surrounding)
     : LexemBase(surrounding.span,
             surrounding.op.str + " " + lexems_join(inner) + " " + surrounding.cl.str)
@@ -81,11 +64,8 @@ string Group::debug(size_t depth) const {
         ret += "  ";
     }
 
-    ret += "group";
-    if (surrounding.has_value()) {
-        ret += ' ';
-        ret += surrounding->str;
-    }
+    ret += "group ";
+    ret += surrounding.str;
 
     for (const auto& lexem : inner) {
         ret += '\n';
@@ -127,9 +107,9 @@ static I find_closing(Span op_span, const Paren& op, I begin, I end) {
 
 
 template< typename I >
-static shared_ptr<Group> find_groups_range(optional<ParenPair> surrounding, I begin, I end) {
+static shared_ptr<Group> find_groups_range(ParenPair surrounding, I begin, I end) {
     if (begin >= end) {
-        return make_shared<Group>(vector<LexemTree>());
+        return make_shared<Group>(vector<LexemTree>(), move(surrounding));
     }
 
     vector<LexemTree> inner;
@@ -148,11 +128,7 @@ static shared_ptr<Group> find_groups_range(optional<ParenPair> surrounding, I be
                 inner.push_back(find_groups_range(move(surround), next(begin), closing));
                 begin = closing;
             } else {
-                if (surrounding.has_value()) {
-                    throw UnbalancedParenthesis(surrounding->op.span.join(paren.span), paren.span);
-                } else {
-                    throw UnbalancedParenthesis(paren.span, paren.span);
-                }
+                throw UnbalancedParenthesis(surrounding.op.span.join(paren.span), paren.span);
             }
         } else {
             inner.push_back(move(*begin));
@@ -161,13 +137,13 @@ static shared_ptr<Group> find_groups_range(optional<ParenPair> surrounding, I be
         ++begin;
     }
 
-    if (surrounding.has_value()) {
-        return make_shared<Group>(move(inner), move(*surrounding));
-    } else {
-        return make_shared<Group>(move(inner));
-    }
+    return make_shared<Group>(move(inner), move(surrounding));
 }
 
 shared_ptr<Group> groups::find_groups(std::vector<Lexem> lexems) {
-    return find_groups_range(nullopt, lexems.begin(), lexems.end());
+    auto pair = ParenPair(
+        Paren(Span::empty(), "", "", true),
+        Paren(Span::empty(), "", "", false));
+
+    return find_groups_range(move(pair), lexems.begin(), lexems.end());
 }

@@ -30,10 +30,10 @@ bool ParseStream::is_empty() const {
 
 Span ParseStream::span() const {
     if (is_empty()) {
-        if (parent == nullptr || !parent->surrounding.has_value()) {
+        if (parent == nullptr) {
             return Span::empty();
         } else {
-            return parent->surrounding->cl.span;
+            return parent->surrounding.cl.span;
         }
     } else {
         return get_span(*begin);
@@ -41,14 +41,22 @@ Span ParseStream::span() const {
 }
 
 string ParseStream::str() const {
+    string ret;
+
     if (is_empty()) {
-        if (parent == nullptr || !parent->surrounding.has_value()) {
-            return "";
+        if (parent == nullptr) {
+            ret = "";
         } else {
-            return parent->surrounding->cl.str;
+            ret = parent->surrounding.cl.str;
         }
     } else {
-        return string(get_str(*begin));
+        ret = string(get_str(*begin));
+    }
+
+    if (ret.empty()) {
+        return "[<empty string>]";
+    } else {
+        return ret;
     }
 }
 
@@ -77,6 +85,12 @@ ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
     if (boolean.has_result()) {
         in = stream;
         return Expr(move(boolean.get()));
+    }
+
+    auto func = DO(parse_function_literal(stream));
+    if (func.has_result()) {
+        in = stream;
+        return Expr(move(func.get()));
     }
 
     auto array = DO(parse_array_literal(stream));
@@ -285,6 +299,9 @@ ParserResult<Rc<Block>> parser::parse_block(ParseStream& in) {
     auto stream = in.clone();
     auto group = TRY(parse<Rc<Group>>(stream));
     auto parens = group->surrounding;
+    if (parens.str != "{}") {
+        return in.expected("block expression");
+    }
 
     vector<Stmt> statements;
     auto group_stream = ParseStream(*group);
@@ -301,7 +318,9 @@ ParserResult<Rc<Block>> parser::parse_block(ParseStream& in) {
         } else {
             auto expr = TRY(parse_expr(group_stream));
             if (!group_stream.is_empty()) {
-                return group_stream.expected("; or }");
+                auto err = group_stream.expected("; or }");
+                err->critical = true;
+                return err;
             }
 
             in = stream;
@@ -382,4 +401,28 @@ ParserResult<Rc<ArrayLiteral>> parser::parse_array_literal(ParseStream& in) {
     auto list = TRY(parse_list<Expr>(parse_expr, "[]", in));
 
     return make_shared<ArrayLiteral>(ArrayLiteral { move(list) });
+}
+
+ParserResult<Rc<FunctionLiteral>> parser::parse_function_literal(ParseStream& in) {
+    auto stream = in.clone();
+
+    auto func = TRY(parse_str<Word>("func", stream));
+    auto argnames = TRY_CRITICAL(parse_list<Word>(parse<Word>, "()", stream));
+    auto body = TRY_CRITICAL(parse_expr(stream));
+
+    in = stream;
+
+    return make_shared<FunctionLiteral>(FunctionLiteral { func, move(argnames), move(body) });
+}
+
+
+ParserResult<Rc<Program>> parser::parse_program(Group& group) {
+    auto stream = ParseStream(group.inner);
+
+    vector<Stmt> statements;
+    while (!stream.is_empty()) {
+        statements.push_back(TRY(parse_stmt(stream)));
+    }
+
+    return make_shared<Program>(Program { move(statements) });
 }

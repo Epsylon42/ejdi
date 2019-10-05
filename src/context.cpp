@@ -199,6 +199,12 @@ static Value array_() {
                      return res;
                  })
         );
+    obj->set("len",
+             Function::native_expanded<Array>(
+                 [](Ctx, auto arr) {
+                     return (float)arr->size();
+                 })
+        );
     obj->set("push",
              Function::native(
                  [](Ctx ctx, vector<Value> val) {
@@ -237,6 +243,18 @@ static Value array_() {
                      return (*arr)[index];
                  })
         );
+    obj->set("set",
+             Function::native_expanded<Array, float, Value>(
+                 [](Ctx ctx, auto arr, size_t index, Value val) {
+                     if (arr->size() < index) {
+                         throw ctx.error("array index out of bounds");
+                     }
+
+                     (*arr)[index] = move(val);
+
+                     return Unit{};
+                 })
+        );
 
     return obj;
 }
@@ -255,6 +273,15 @@ namespace ejdi::exec::context {
 
         return error(move(msg), span);
     }
+
+    Context Context::child() {
+        auto child_scope = make_shared<Object>();
+        child_scope->prototype = scope;
+        child_scope->mutable_prototype_fields = true;
+
+        return Context { global, move(child_scope) };
+    }
+
 
     GlobalContext GlobalContext::with_core() {
         auto core = make_shared<Object>();

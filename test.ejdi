@@ -1,9 +1,22 @@
-{
+let make_arr = func() {
     let arr = [];
     let i = 0;
     while i < 10 {
         arr.push(i);
         i = i + 1;
     };
-    print(arr, "\n");
-}
+    arr
+};
+
+Array.map = func(self, f) {
+    let res = [];
+    let i = 0;
+    while i < self.len() {
+        res.push(f(self.at(i)));
+        i = i + 1;
+    };
+    res
+};
+
+let arr = make_arr();
+print(arr.map(func(x) x + 2), "\n");
