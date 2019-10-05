@@ -117,12 +117,15 @@ namespace ejdi::exec {
         }
 
         Value ev(const Block& block) {
+            auto block_ctx = ctx.child();
+
             for (const auto& stmt : block.statements) {
-                exec(ctx, stmt);
+                exec(block_ctx, stmt);
             }
 
+
             if (block.ret.has_value()) {
-                return eval(ctx, *block.ret);
+                return eval(block_ctx, *block.ret);
             } else {
                 return Unit{};
             }
@@ -218,6 +221,34 @@ namespace ejdi::exec {
         Value ev(const WhileLoop& loop) {
             while (eval(ctx, loop.condition).as<bool>()) {
                 ev(*loop.block);
+            }
+
+            return Unit{};
+        }
+
+        Value ev(const ForLoop& loop) {
+            auto iterable = eval(ctx, loop.iterable);
+            auto iter = get_vtable(ctx, iterable)
+                .getf("__iter")
+                .call(ctx, { iterable });
+
+            auto enditer = ctx.global.core
+                ->get("Iterator")
+                .as<Object>()
+                ->get("end")
+                .as<Object>();
+
+            auto loop_ctx = ctx.child();
+            auto evaluator = Evaluator { loop_ctx };
+
+            while (true) {
+                auto elem = get_vtable(ctx, iter).getf("__next").call(ctx, { iter });
+                if (elem.is<Object>() && elem.as<Object>() == enditer) {
+                    break;
+                }
+
+                loop_ctx.scope->set_no_prototype(loop.variable.str, move(elem));
+                evaluator(loop.body);
             }
 
             return Unit{};

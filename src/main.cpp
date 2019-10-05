@@ -35,8 +35,6 @@ int main() {
         using namespace ejdi::exec::value;
         using namespace ejdi::exec::context;
 
-        cout << program.get()->debug() << endl;
-
         auto ctx = GlobalContext::with_core();
 
         auto mod = ctx.new_module("test");

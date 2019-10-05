@@ -243,6 +243,27 @@ Span ast::WhileLoop::span() const {
 }
 
 
+string ast::ForLoop::debug(size_t depth) const {
+    string res = offset(depth);
+    res += "for ";
+    res += variable.str;
+    res += " in \n";
+
+    res += ast_debug(iterable, depth + 1);
+
+    res += offset(depth);
+    res += "do\n";
+
+    res += body->debug(depth + 1);
+
+    return res;
+}
+
+Span ast::ForLoop::span() const {
+    return for_.span.join(body->span());
+}
+
+
 string ast::IfThenElse::debug(size_t depth) const {
     string res = offset(depth);
 

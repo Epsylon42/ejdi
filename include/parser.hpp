@@ -105,6 +105,7 @@ namespace ejdi::parser {
 
     PR(Block) parse_block(ParseStream& in);
     PR(WhileLoop) parse_while_loop(ParseStream& in);
+    PR(ForLoop) parse_for_loop(ParseStream& in);
     PR(IfThenElse) parse_conditional(ParseStream& in);
     PR(NumberLiteral) parse_number_literal(ParseStream& in);
     PR(StringLiteral) parse_string_literal(ParseStream& in);

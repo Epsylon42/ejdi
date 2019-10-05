@@ -117,6 +117,12 @@ ParserResult<Expr> parser::parse_primary_expr(ParseStream& in) {
         return Expr(move(while_.get()));
     }
 
+    auto for_ = DO(parse_for_loop(stream));
+    if (for_.has_result()) {
+        in = stream;
+        return Expr(move(for_.get()));
+    }
+
     auto word = DO(parse<Word>(stream));
     if (word.has_result()) {
         in = stream;
@@ -346,6 +352,29 @@ ParserResult<Rc<WhileLoop>> parser::parse_while_loop(ParseStream& in) {
             while_,
             move(cond),
             move(block),
+        }
+    );
+}
+
+ParserResult<Rc<ForLoop>> parser::parse_for_loop(ParseStream& in) {
+    auto stream = in.clone();
+
+    auto for_ = TRY(parse_str<Word>("for", stream));
+    auto variable = TRY_CRITICAL(parse<Word>(stream));
+    auto in_ = TRY_CRITICAL(parse_str<Word>("in", stream));
+    auto iterable = TRY_CRITICAL(parse_expr(stream));
+
+    auto body = TRY_CRITICAL(parse_block(stream));
+
+    in = stream;
+
+    return make_shared<ForLoop>(
+        ForLoop {
+            for_,
+            variable,
+            in_,
+            move(iterable),
+            move(body)
         }
     );
 }

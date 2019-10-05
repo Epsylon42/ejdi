@@ -25,6 +25,7 @@ namespace ejdi::ast {
     struct FieldAccess;
     struct MethodCall;
     struct WhileLoop;
+    struct ForLoop;
     struct IfThenElse;
     struct StringLiteral;
     struct NumberLiteral;
@@ -44,6 +45,7 @@ namespace ejdi::ast {
         Rc<FieldAccess>,
         Rc<MethodCall>,
         Rc<WhileLoop>,
+        Rc<ForLoop>,
         Rc<IfThenElse>,
         Rc<StringLiteral>,
         Rc<NumberLiteral>,
@@ -154,6 +156,18 @@ namespace ejdi::ast {
         lexer::Word while_;
         Expr condition;
         Rc<Block> block;
+
+        std::string debug(std::size_t depth = 0) const;
+        span::Span span() const;
+    };
+
+    struct ForLoop {
+        lexer::Word for_;
+        lexer::Word variable;
+        lexer::Word in;
+        Expr iterable;
+
+        Rc<Block> body;
 
         std::string debug(std::size_t depth = 0) const;
         span::Span span() const;

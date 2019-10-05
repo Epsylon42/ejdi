@@ -259,6 +259,12 @@ static Value array_() {
     return obj;
 }
 
+static Value iter() {
+    auto obj = make_shared<Object>();
+    obj->set("end", make_shared<Object>());
+    return obj;
+}
+
 
 namespace ejdi::exec::context {
     RuntimeError Context::error(string message, Span span) const {
@@ -293,7 +299,8 @@ namespace ejdi::exec::context {
             { "String", string_ },
             { "Function", function_ },
             { "Object", object },
-            { "Array", array_ }
+            { "Array", array_ },
+            { "Iterator", iter }
         };
 
         auto prelude = make_shared<Object>();
@@ -333,7 +340,7 @@ namespace ejdi::exec::context {
             Function::native_expanded(
                 [](Ctx ctx) {
                     auto obj = make_shared<Object>();
-                    obj->prototype = ctx.global.core->get("object").as<Object>();
+                    obj->prototype = ctx.global.core->get("Object").as<Object>();
                     return obj;
                 })
             );
