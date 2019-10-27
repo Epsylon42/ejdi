@@ -18,6 +18,7 @@ namespace ejdi::exec::context {
     struct Context {
         GlobalContext& global;
         std::shared_ptr<value::Object> scope;
+        std::filesystem::path module_path;
         std::vector<std::tuple<std::string, span::Span>> stack_trace;
 
         error::RuntimeError error(std::string message, span::Span span = span::Span::empty()) const;

@@ -358,7 +358,7 @@ namespace ejdi::exec::context {
             "require",
             Function::native_expanded<string>(
                 [](Ctx ctx, auto str) {
-                    return ctx.global.load_module(*str);
+                    return ctx.global.load_module(*str, &ctx);
                 })
             );
 
@@ -387,10 +387,16 @@ namespace ejdi::exec::context {
 
         path module_path;
         if (starts_with(module, "./")) {
-            module_path = module;
+            if (loading_from == nullptr) {
+                module_path = module;
+            } else {
+                auto rel = loading_from->module_path;
+                rel.remove_filename();
+                module_path = rel / module;
+            }
         } else {
             for (const auto& global_import_path : global_import_paths) {
-                module_path = relative(module, global_import_path);
+                module_path = global_import_path / module;
                 if (exists(module_path) && !is_directory(module_path)) {
                     break;
                 }
@@ -429,7 +435,7 @@ namespace ejdi::exec::context {
             }
             auto mod = new_module(module_path);
             mod->set("exports", Unit{});
-            auto ctx = Context { *this, move(mod) };
+            auto ctx = Context { *this, move(mod), module_path };
             exec::exec_program(ctx, *program.get());
             return ctx.scope->get("exports");
         } catch (logic_error& e) {
