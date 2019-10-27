@@ -8,7 +8,7 @@ The language itself is more-or-less usable, but there's currenly no way to inter
 
 ## building
 
-ejdi requires cmake and a c++ compiler with c++17 support.
+ejdi requires cmake and a c++ compiler with c++17 support (tested with g++ 9.2.1).
 
 Building with cmake requires internet connection and will download some cmake code into your `$HOME/.cppm` and `$HOME/.hunter`. If you don't want this, build ejdi manually with `g++ -std=c++17 -Iinclude src/* -o ejdi`
 
