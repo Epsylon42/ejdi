@@ -277,7 +277,7 @@ static Value iter() {
 
 namespace ejdi::exec::context {
     RuntimeError Context::error(string message, Span span) const {
-        return RuntimeError { move(message), span, global.stack_trace };
+        return RuntimeError { move(message), span, stack_trace };
     }
 
     RuntimeError Context::arg_count_error(size_t expected, size_t got, Span span) const {
@@ -367,14 +367,6 @@ namespace ejdi::exec::context {
         return GlobalContext { move(core), {}, {} };
     }
 
-    void GlobalContext::call(string name, Span span) {
-        stack_trace.push_back(make_tuple(move(name), span));
-    }
-
-    void GlobalContext::ret() {
-        stack_trace.pop_back();
-    }
-
     shared_ptr<Object> GlobalContext::new_module(string name) {
         auto mod = make_shared<Object>();
         mod->prototype = core->get("prelude").as<Object>();
@@ -382,8 +374,16 @@ namespace ejdi::exec::context {
         return mod;
     }
 
-    Value GlobalContext::load_module(string_view module) {
+    Value GlobalContext::load_module(string_view module, Context* loading_from) {
         using namespace std::filesystem;
+
+        auto stack_trace = [&]() -> decltype(loading_from->stack_trace) {
+            if (loading_from == nullptr) {
+                return {};
+            } else {
+                return loading_from->stack_trace;
+            }
+        };
 
         path module_path;
         if (starts_with(module, "./")) {
@@ -406,13 +406,13 @@ namespace ejdi::exec::context {
         if (!exists(module_path)) {
             string msg = "Could not find module ";
             msg += module;
-            throw RuntimeError{ move(msg), Span::empty(), stack_trace };
+            throw RuntimeError{ move(msg), Span::empty(), stack_trace() };
         }
         if (is_directory(module_path)) {
             string msg = "Module ";
             msg += module;
             msg += " is a directory";
-            throw RuntimeError { move(msg), Span::empty(), stack_trace };
+            throw RuntimeError { move(msg), Span::empty(), stack_trace() };
         }
 
         try {
@@ -432,7 +432,17 @@ namespace ejdi::exec::context {
             exec::exec_program(ctx, *program.get());
             return ctx.scope->get("exports");
         } catch (logic_error& e) {
-            throw RuntimeError { e.what(), Span::empty(), stack_trace };
+            throw RuntimeError { e.what(), Span::empty(), stack_trace() };
+        } catch (parser::result::ParserError& e) {
+            string msg = "Parser error: expected ";
+            msg += e.expected;
+            msg += " but got ";
+            msg += e.got;
+            throw RuntimeError { move(msg), e.span, stack_trace() };
         }
+    }
+
+    void GlobalContext::print_error_message(const RuntimeError& error) const {
+        cerr << error.root_error << endl;
     }
 }

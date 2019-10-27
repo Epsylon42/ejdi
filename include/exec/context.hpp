@@ -17,6 +17,7 @@ namespace ejdi::exec::context {
     struct Context {
         GlobalContext& global;
         std::shared_ptr<value::Object> scope;
+        std::vector<std::tuple<std::string, span::Span>> stack_trace;
 
         error::RuntimeError error(std::string message, span::Span span = span::Span::empty()) const;
         error::RuntimeError arg_count_error(std::size_t expected, std::size_t got, span::Span = span::Span::empty()) const;
@@ -30,13 +31,10 @@ namespace ejdi::exec::context {
         std::unordered_map<std::string, std::shared_ptr<value::Object>> modules;
         std::vector<std::filesystem::path> global_import_paths;
 
-        std::vector<std::tuple<std::string, span::Span>> stack_trace;
-
         static GlobalContext with_core();
 
-        void call(std::string name, span::Span span);
-        void ret();
-        value::Value load_module(std::string_view module);
+        value::Value load_module(std::string_view module, Context* loading_from = nullptr);
+        void print_error_message(const error::RuntimeError& error) const;
 
         std::shared_ptr<value::Object> new_module(std::string name);
     };

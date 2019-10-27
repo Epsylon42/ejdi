@@ -14,7 +14,11 @@ int main(int argc, char* argv[]) {
     }
 
     auto ctx = ejdi::exec::context::GlobalContext::with_core();
-    ctx.load_module(argv[1]);
+    try {
+        ctx.load_module(argv[1]);
+    } catch (ejdi::exec::error::RuntimeError& e) {
+        ctx.print_error_message(e);
+    }
 
     // auto file = ifstream(argv[1]);
     // string source {istreambuf_iterator<char>(file), {}};
