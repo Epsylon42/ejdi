@@ -27,6 +27,7 @@ SOURCES
 	src/lexem_groups.cpp
 	src/main.cpp
 	src/lexer.cpp
+	src/util.cpp
 	src/parser.cpp
 	src/exec.cpp
 	src/context.cpp

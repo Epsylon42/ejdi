@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <tuple>
+#include <filesystem>
 
 #include <span.hpp>
 #include <exec/value.hpp>
@@ -25,14 +26,18 @@ namespace ejdi::exec::context {
 
     struct GlobalContext {
         std::shared_ptr<value::Object> core;
-        std::unordered_map<std::string, value::Value> modules;
+
+        std::unordered_map<std::string, std::shared_ptr<value::Object>> modules;
+        std::vector<std::filesystem::path> global_import_paths;
+
         std::vector<std::tuple<std::string, span::Span>> stack_trace;
 
         static GlobalContext with_core();
 
         void call(std::string name, span::Span span);
         void ret();
+        value::Value load_module(std::string_view module);
 
-        Context new_module(std::string name);
+        std::shared_ptr<value::Object> new_module(std::string name);
     };
 }

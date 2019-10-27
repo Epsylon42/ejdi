@@ -6,11 +6,13 @@
 
 #include <span.hpp>
 #include <lexer.hpp>
+#include <util.hpp>
 
 using namespace std;
 using ejdi::span::Span;
 using namespace ejdi::lexer;
 using namespace ejdi::lexer::actions;
+using namespace ejdi::util;
 
 
 bool LexemBase::operator==(const string_view& str) const {
@@ -53,16 +55,6 @@ string_view ejdi::lexer::get_str(const Lexem& lexem) {
 template<>
 string ejdi::lexer::lexem_debug<Lexem>(const Lexem& lexem, size_t depth) {
     return visit([depth](const auto& lexem) { return lexem.debug(depth); }, lexem);
-}
-
-
-static bool starts_with(string_view str, string_view pat) {
-    return str.length() >= pat.length()
-        && str.substr(0, pat.length()) == pat;
-}
-
-static bool starts_with(string_view str, char c) {
-    return !str.empty() && str[0] == c;
 }
 
 

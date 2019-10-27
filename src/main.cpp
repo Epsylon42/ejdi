@@ -3,21 +3,9 @@
 #include <fstream>
 #include <string>
 
-#include <span.hpp>
-#include <lexer.hpp>
-#include <lexem_groups.hpp>
-#include <ast.hpp>
-#include <parser.hpp>
-#include <linemap.hpp>
-
-#include <exec/exec.hpp>
-#include <exec/value.hpp>
-#include <exec/error.hpp>
+#include <exec/context.hpp>
 
 using namespace std;
-using namespace ejdi;
-using namespace ejdi::lexer;
-using namespace ejdi::lexer::groups;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -25,38 +13,41 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    auto file = ifstream(argv[1]);
-    string source {istreambuf_iterator<char>(file), {}};
+    auto ctx = ejdi::exec::context::GlobalContext::with_core();
+    ctx.load_module(argv[1]);
 
-    auto linemap = linemap::Linemap(source);
+    // auto file = ifstream(argv[1]);
+    // string source {istreambuf_iterator<char>(file), {}};
 
-    auto lexems = lexer::actions::split_string(source, "test.ejdi");
+    // auto linemap = linemap::Linemap(source);
 
-    auto group = lexer::groups::find_groups(move(lexems));
+    // auto lexems = lexer::actions::split_string(source, "test.ejdi");
 
-    auto program = parser::parse_program(*group);
-    if (program.has_result()) {
-        using namespace ejdi::exec;
-        using namespace ejdi::exec::value;
-        using namespace ejdi::exec::context;
+    // auto group = lexer::groups::find_groups(move(lexems));
 
-        auto ctx = GlobalContext::with_core();
+    // auto program = parser::parse_program(*group);
+    // if (program.has_result()) {
+    //     using namespace ejdi::exec;
+    //     using namespace ejdi::exec::value;
+    //     using namespace ejdi::exec::context;
 
-        auto mod = ctx.new_module("test");
+    //     auto ctx = GlobalContext::with_core();
 
-        try {
-            ejdi::exec::exec_program(mod, *program.get());
-        } catch (error::RuntimeError& e) {
-            auto pos = linemap.span_to_pos_pair(e.root_span).first;
-            cerr << "RUNTIME ERROR at " << pos.line+1 << ':' << pos.column << endl;
-            cerr << "  " << e.root_error << endl;
-        }
-    } else {
-        auto& error = program.error();
-        auto pos = linemap.span_to_pos_pair(error.span).first;
-        cerr << "ERROR at " << pos.line+1 << ':' << pos.column << endl;
-        cerr << "  expected " << error.expected
-             << " but got " << error.got
-             << endl;
-    }
+    //     auto mod = ctx.new_module("test");
+
+    //     try {
+    //         ejdi::exec::exec_program(mod, *program.get());
+    //     } catch (error::RuntimeError& e) {
+    //         auto pos = linemap.span_to_pos_pair(e.root_span).first;
+    //         cerr << "RUNTIME ERROR at " << pos.line+1 << ':' << pos.column << endl;
+    //         cerr << "  " << e.root_error << endl;
+    //     }
+    // } else {
+    //     auto& error = program.error();
+    //     auto pos = linemap.span_to_pos_pair(error.span).first;
+    //     cerr << "ERROR at " << pos.line+1 << ':' << pos.column << endl;
+    //     cerr << "  expected " << error.expected
+    //          << " but got " << error.got
+    //          << endl;
+    // }
 }

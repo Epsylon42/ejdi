@@ -1,13 +1,22 @@
 #include <iostream>
 #include <cmath>
+#include <fstream>
 
 #include <exec/context.hpp>
+#include <exec/exec.hpp>
+#include <util.hpp>
+#include <lexer.hpp>
+#include <lexem_groups.hpp>
+#include <ast.hpp>
+#include <parser.hpp>
+#include <span.hpp>
 
 using namespace std;
 using namespace ejdi::span;
 using namespace ejdi::exec::value;
 using namespace ejdi::exec::context;
 using namespace ejdi::exec::error;
+using namespace ejdi::util;
 
 using Ctx = Context&;
 
@@ -345,6 +354,14 @@ namespace ejdi::exec::context {
                 })
             );
 
+        prelude->set(
+            "require",
+            Function::native_expanded<string>(
+                [](Ctx ctx, auto str) {
+                    return ctx.global.load_module(*str);
+                })
+            );
+
         core->set("prelude", move(prelude));
 
         return GlobalContext { move(core), {}, {} };
@@ -358,10 +375,64 @@ namespace ejdi::exec::context {
         stack_trace.pop_back();
     }
 
-    Context GlobalContext::new_module(string name) {
-        auto scope = make_shared<Object>();
-        scope->prototype = core->get("prelude").as<Object>();
-        modules.insert_or_assign(move(name), scope);
-        return Context { *this, move(scope) };
+    shared_ptr<Object> GlobalContext::new_module(string name) {
+        auto mod = make_shared<Object>();
+        mod->prototype = core->get("prelude").as<Object>();
+        modules.insert_or_assign(move(name), mod);
+        return mod;
+    }
+
+    Value GlobalContext::load_module(string_view module) {
+        using namespace std::filesystem;
+
+        path module_path;
+        if (starts_with(module, "./")) {
+            module_path = module;
+        } else {
+            for (const auto& global_import_path : global_import_paths) {
+                module_path = relative(module, global_import_path);
+                if (exists(module_path) && !is_directory(module_path)) {
+                    break;
+                }
+            }
+            module_path = module;
+        }
+
+        auto maybe_module = modules.find(module_path);
+        if (maybe_module != modules.end()) {
+            return maybe_module->second->get("exports");
+        }
+
+        if (!exists(module_path)) {
+            string msg = "Could not find module ";
+            msg += module;
+            throw RuntimeError{ move(msg), Span::empty(), stack_trace };
+        }
+        if (is_directory(module_path)) {
+            string msg = "Module ";
+            msg += module;
+            msg += " is a directory";
+            throw RuntimeError { move(msg), Span::empty(), stack_trace };
+        }
+
+        try {
+            auto file = ifstream(module_path);
+            string source { istreambuf_iterator<char>(file), {}};
+
+            //TODO: use proper file paths
+            auto lexems = lexer::actions::split_string(source, "___");
+            auto group = lexer::groups::find_groups(move(lexems));
+            auto program = parser::parse_program(*group);
+            if (!program.has_result()) {
+                throw move(program.error());
+            }
+            auto mod = new_module(module_path);
+            mod->set("exports", Unit{});
+            auto ctx = Context { *this, move(mod) };
+            exec::exec_program(ctx, *program.get());
+            return ctx.scope->get("exports");
+        } catch (logic_error& e) {
+            throw RuntimeError { e.what(), Span::empty(), stack_trace };
+        }
     }
 }
