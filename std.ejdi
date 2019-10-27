@@ -1,0 +1,40 @@
+Array.__iter = func(self) {
+    let iter = obj();
+    iter.arr = self;
+    iter.i = 0;
+    iter.__next = func(self) {
+        if self.i < self.arr.len() {
+            let ret = self.arr.at(self.i);
+            self.i = self.i + 1;
+            ret
+        } else {
+            Iterator.end
+        }
+    };
+    iter
+};
+
+Array.map = func(self, f) {
+    let res = [];
+    for elem in self {
+        res.push(f(elem));
+    }
+    res
+};
+
+exports = obj();
+exports.range = func(top) {
+    let iter = obj();
+    iter.i = 0;
+    iter.top = top;
+    iter.__iter = func(self) self;
+    iter.__next = func(self) {
+        if self.i < self.top {
+            self.i = self.i + 1;
+            self.i - 1
+        } else {
+            Iterator.end
+        }
+    };
+    iter
+};
