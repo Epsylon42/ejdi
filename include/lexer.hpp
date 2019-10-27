@@ -120,6 +120,6 @@ namespace ejdi::lexer {
         };
 
 
-        std::vector<Lexem> split_string(std::string_view str, std::string_view filename);
+        std::vector<Lexem> split_string(std::string_view str, std::string filename);
     }
 }

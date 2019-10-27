@@ -8,6 +8,7 @@
 #include <filesystem>
 
 #include <span.hpp>
+#include <linemap.hpp>
 #include <exec/value.hpp>
 #include <exec/error.hpp>
 
@@ -29,6 +30,7 @@ namespace ejdi::exec::context {
         std::shared_ptr<value::Object> core;
 
         std::unordered_map<std::string, std::shared_ptr<value::Object>> modules;
+        std::unordered_map<std::string, linemap::Linemap> linemaps;
         std::vector<std::filesystem::path> global_import_paths;
 
         static GlobalContext with_core();

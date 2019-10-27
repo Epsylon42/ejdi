@@ -1,4 +1,4 @@
-let std = require("std");
+let std = require("./std");
 let range = std.range;
 
 let make_arr = func() {

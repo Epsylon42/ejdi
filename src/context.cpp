@@ -397,6 +397,7 @@ namespace ejdi::exec::context {
             }
             module_path = module;
         }
+        module_path.replace_extension("ejdi");
 
         auto maybe_module = modules.find(module_path);
         if (maybe_module != modules.end()) {
@@ -418,9 +419,9 @@ namespace ejdi::exec::context {
         try {
             auto file = ifstream(module_path);
             string source { istreambuf_iterator<char>(file), {}};
+            linemaps.emplace(module_path, source);
 
-            //TODO: use proper file paths
-            auto lexems = lexer::actions::split_string(source, "___");
+            auto lexems = lexer::actions::split_string(source, module_path);
             auto group = lexer::groups::find_groups(move(lexems));
             auto program = parser::parse_program(*group);
             if (!program.has_result()) {
@@ -443,6 +444,10 @@ namespace ejdi::exec::context {
     }
 
     void GlobalContext::print_error_message(const RuntimeError& error) const {
-        cerr << error.root_error << endl;
+        const auto& linemap = linemaps.at(error.root_span.file);
+        auto pos = linemap.span_to_pos_pair(error.root_span).first;
+        cerr << "ERROR in module " << error.root_span.file << "\n";
+        cerr << "  at " << pos.line+1 << ':' << pos.column << "\n";
+        cerr << "  " << error.root_error << endl;
     }
 }

@@ -67,7 +67,7 @@ optional<Lexem> get_num_lit(string_view str, SpanConstructor span);
 optional<Lexem> get_str_lit(string_view str, SpanConstructor span);
 
 
-vector<Lexem> actions::split_string(string_view str, string_view filename) {
+vector<Lexem> actions::split_string(string_view str, string filename) {
     vector<Lexem> lexems;
     size_t offset = 0;
 
@@ -82,7 +82,7 @@ vector<Lexem> actions::split_string(string_view str, string_view filename) {
         }
 
         auto span_constructor = [offset, filename](size_t length) {
-            return Span(string(filename), offset, offset + length);
+            return Span(filename, offset, offset + length);
         };
 
         for (auto& func : functions) {
